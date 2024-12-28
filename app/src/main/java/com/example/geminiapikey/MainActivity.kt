@@ -12,7 +12,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.geminiapikey.ui.theme.GeminiAPIKeyTheme
-import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +25,6 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 GetStartedScreen(context)
                 LaunchedEffect(key1 = true){
-                    delay(3000)
                     keepSplashScreeOn = false
                 }
             }
