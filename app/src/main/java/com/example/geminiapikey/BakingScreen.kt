@@ -37,6 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -72,11 +75,14 @@ fun BakingScreen(
     val uiState by bakingViewModel.uiState.collectAsState()
     var displayedText by remember { mutableStateOf("") }
 
-    Box(
+    Column(
         modifier = Modifier.fillMaxSize()
     ) {
+        // Main content
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .weight(1f) // Ensure the content takes up the remaining space above the banner
+                .fillMaxWidth()
         ) {
             Text(
                 text = stringResource(R.string.baking_title),
@@ -134,6 +140,7 @@ fun BakingScreen(
                     Text(text = stringResource(R.string.action_go))
                 }
             }
+
             when (uiState) {
                 is UiState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -160,13 +167,13 @@ fun BakingScreen(
         BannerAdView(
             context = context,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(50.dp),
             adUnitIdValue = "ca-app-pub-3940256099942544/6300978111"
         )
     }
 }
+
 
 @Composable
 fun TypingEffectText(
@@ -186,9 +193,33 @@ fun TypingEffectText(
         onTypingComplete?.invoke()
     }
 
+    val annotatedText = buildAnnotatedString {
+        val regex = Regex("\\*\\*(.*?)\\*\\*") // Matches text wrapped in "**"
+        var lastIndex = 0
+
+        regex.findAll(animatedText).forEach { matchResult ->
+            val startIndex = matchResult.range.first
+            val endIndex = matchResult.range.last + 1
+
+            // Append text before the match
+            append(animatedText.substring(lastIndex, startIndex))
+
+            // Append the bold text
+            pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+            append(matchResult.groupValues[1])
+            pop()
+
+            lastIndex = endIndex
+        }
+
+        // Append any remaining text
+        if (lastIndex < animatedText.length) {
+            append(animatedText.substring(lastIndex))
+        }
+    }
+
     Text(
-        text = animatedText,
-        style = MaterialTheme.typography.bodyLarge,
+        text = annotatedText, // Use AnnotatedString for proper rendering
         modifier = Modifier
             .padding(16.dp)
             .verticalScroll(scrollState)

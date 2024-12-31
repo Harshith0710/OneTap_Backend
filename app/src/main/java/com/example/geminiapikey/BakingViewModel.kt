@@ -33,7 +33,8 @@ class BakingViewModel : ViewModel() {
                     }
                 ).collect { responseChunk ->
                     responseChunk.text?.let { partialContent ->
-                        accumulatedContent.append(partialContent)
+                        val formattedContent = formatHeadings(partialContent)
+                        accumulatedContent.append(formattedContent)
                         // Update UI with the current streamed content
                         _uiState.value = UiState.Streaming(accumulatedContent.toString())
                     }
@@ -47,3 +48,8 @@ class BakingViewModel : ViewModel() {
         }
     }
 }
+
+private fun formatHeadings(text: String): String {
+    return text.replace(Regex("<b>(.*?)</b>"), "**$1**")
+}
+

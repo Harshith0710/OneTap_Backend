@@ -108,7 +108,7 @@ fun IntroText(image: Int, sizeFraction: Float, modifier: Modifier = Modifier) {
 fun GetStartedButton(context: Context, modifier: Modifier = Modifier) {
     Button(
         onClick = {
-            val intent = Intent(context,BakingActivity::class.java)
+            val intent = Intent(context,HomeActivity::class.java)
             context.startActivity(intent)
         },
         shape = RoundedCornerShape(50),
