@@ -69,4 +69,5 @@ dependencies {
     implementation(libs.androidx.constraintlayout.compose)
     implementation (libs.google.play.services.ads.v2200)
     implementation(libs.androidx.core.splashscreen)
+    implementation (libs.androidx.runtime.saveable)
 }

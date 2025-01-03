@@ -19,7 +19,7 @@ class BakingViewModel : ViewModel() {
         apiKey = BuildConfig.apiKey
     )
 
-    fun sendPrompt(bitmap: Bitmap, prompt: String) {
+    fun sendPrompt(bitmap: Bitmap?, prompt: String) {
         _uiState.value = UiState.Loading
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -28,7 +28,9 @@ class BakingViewModel : ViewModel() {
 
                 generativeModel.generateContentStream(
                     content {
-                        image(bitmap)
+                        if (bitmap != null) {
+                            image(bitmap)
+                        }
                         text(prompt)
                     }
                 ).collect { responseChunk ->

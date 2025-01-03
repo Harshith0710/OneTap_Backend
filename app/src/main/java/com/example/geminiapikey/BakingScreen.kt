@@ -1,21 +1,22 @@
 package com.example.geminiapikey
 
 import UiState
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.BitmapFactory
-import androidx.compose.foundation.BorderStroke
+import android.content.Intent
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -27,13 +28,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -41,117 +45,122 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat.getColor
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.MobileAds
 import kotlinx.coroutines.delay
-
-val images = arrayOf(
-    // Image generated using Gemini from the prompt "cupcake image"
-    R.drawable.baked_goods_1,
-    // Image generated using Gemini from the prompt "cookies images"
-    R.drawable.baked_goods_2,
-    // Image generated using Gemini from the prompt "cake images"
-    R.drawable.baked_goods_3,
-)
-val imageDescriptions = arrayOf(
-    R.string.image1_description,
-    R.string.image2_description,
-    R.string.image3_description,
-)
 
 @Composable
 fun BakingScreen(
     context: Context,
     bakingViewModel: BakingViewModel = viewModel()
 ) {
-    MobileAds.initialize(context)
-    val selectedImage = remember { mutableIntStateOf(0) }
     val placeholderPrompt = stringResource(R.string.prompt_placeholder)
     var prompt by rememberSaveable { mutableStateOf(placeholderPrompt) }
     val uiState by bakingViewModel.uiState.collectAsState()
     var displayedText by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(getColor(context, R.color.splash_background)))
     ) {
-        // Main content
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.icons),
+                contentDescription = "Go Back",
+                modifier = Modifier
+                    .clickable {
+                        if (context is ComponentActivity) {
+                            context.onBackPressedDispatcher.onBackPressed()
+                        }
+                    }
+                    .padding(8.dp)
+                    .requiredSize(32.dp)
+            )
+            Spacer(modifier = Modifier.weight(0.8f))
+            Image(
+                painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_1),
+                contentDescription = "App Icon"
+            )
+            Spacer(modifier = Modifier.weight(1f))
+        }
+
         Column(
             modifier = Modifier
-                .weight(1f) // Ensure the content takes up the remaining space above the banner
+                .weight(1f)
                 .fillMaxWidth()
         ) {
-            Text(
-                text = stringResource(R.string.baking_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            LazyRow(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                itemsIndexed(images) { index, image ->
-                    var imageModifier = Modifier
-                        .padding(start = 8.dp, end = 8.dp)
-                        .requiredSize(200.dp)
-                        .clickable {
-                            selectedImage.intValue = index
-                        }
-                    if (index == selectedImage.intValue) {
-                        imageModifier =
-                            imageModifier.border(BorderStroke(4.dp, MaterialTheme.colorScheme.primary))
-                    }
-                    Image(
-                        painter = painterResource(image),
-                        contentDescription = stringResource(imageDescriptions[index]),
-                        modifier = imageModifier
-                    )
-                }
-            }
-
             Row(
-                modifier = Modifier.padding(all = 16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                TextField(
-                    value = prompt,
-                    label = { Text(stringResource(R.string.label_prompt)) },
-                    onValueChange = { prompt = it },
+                Image(
+                    painter = painterResource(R.drawable.icon_copy__component_additional_icons),
+                    contentDescription = "Copy",
                     modifier = Modifier
-                        .weight(0.8f)
-                        .padding(end = 16.dp)
-                        .align(Alignment.CenterVertically)
+                        .clickable {
+                            val clipboardManager =
+                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipData =
+                                ClipData.newPlainText("Copied Text", displayedText)
+                            clipboardManager.setPrimaryClip(clipData)
+                        }
+                        .padding(8.dp)
+                        .requiredSize(32.dp)
                 )
-
-                Button(
-                    onClick = {
-                        val bitmap = BitmapFactory.decodeResource(
-                            context.resources,
-                            images[selectedImage.intValue]
-                        )
-                        bakingViewModel.sendPrompt(bitmap, prompt)
-                    },
-                    enabled = prompt.isNotEmpty(),
+                Image(
+                    painter = painterResource(R.drawable.icon_share_alt__component_additional_icons), // Replace with your share icon resource
+                    contentDescription = "Share",
                     modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                ) {
-                    Text(text = stringResource(R.string.action_go))
-                }
+                        .clickable {
+                            val boldPrompt = "**${prompt.trim()}**"
+                            val shareText = "$boldPrompt\n\nResponse: $displayedText"
+
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            context.startActivity(
+                                Intent.createChooser(
+                                    shareIntent,
+                                    "Share Chat"
+                                )
+                            )
+                        }
+                        .padding(8.dp)
+                        .requiredSize(32.dp)
+                )
             }
 
             when (uiState) {
                 is UiState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                 }
+
                 is UiState.Streaming -> {
                     val fullText = (uiState as UiState.Streaming).partialText
-                    TypingEffectText(fullText, onTypingComplete = { displayedText = fullText })
+                    TypingEffectText(
+                        fullText,
+                        onTypingComplete = { displayedText = fullText })
                 }
+
                 is UiState.Success -> {
                     displayedText = (uiState as UiState.Success).outputText
                     TypingEffectText(displayedText)
                 }
+
                 is UiState.Error -> {
                     Text(
                         text = (uiState as UiState.Error).errorMessage,
@@ -159,10 +168,37 @@ fun BakingScreen(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
+
                 else -> Unit
             }
         }
 
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(all = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextField(
+                value = prompt,
+                label = { Text(stringResource(R.string.label_prompt)) },
+                onValueChange = { prompt = it },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 16.dp)
+                    .focusRequester(focusRequester)
+            )
+
+            Button(
+                onClick = {
+                    bakingViewModel.sendPrompt(null, prompt)
+                    focusManager.clearFocus()
+                },
+                enabled = prompt.isNotEmpty()
+            ) {
+                Text(text = stringResource(R.string.action_go))
+            }
+        }
         BannerAdView(
             context = context,
             modifier = Modifier
@@ -172,7 +208,6 @@ fun BakingScreen(
         )
     }
 }
-
 
 @Composable
 fun TypingEffectText(
