@@ -228,17 +228,15 @@ fun TypingEffectText(
     }
 
     val annotatedText = buildAnnotatedString {
-        val regex = Regex("\\*\\*(.*?)\\*\\*") // Matches text wrapped in "**"
+        val regex = Regex("\\*\\*(.*?)\\*\\*")
         var lastIndex = 0
 
         regex.findAll(animatedText).forEach { matchResult ->
             val startIndex = matchResult.range.first
             val endIndex = matchResult.range.last + 1
 
-            // Append text before the match
             append(animatedText.substring(lastIndex, startIndex))
 
-            // Append the bold text
             pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
             append(matchResult.groupValues[1])
             pop()
@@ -246,19 +244,20 @@ fun TypingEffectText(
             lastIndex = endIndex
         }
 
-        // Append any remaining text
         if (lastIndex < animatedText.length) {
             append(animatedText.substring(lastIndex))
         }
     }
 
     Text(
-        text = annotatedText, // Use AnnotatedString for proper rendering
+        text = annotatedText,
+        color = Color.White,
         modifier = Modifier
             .padding(16.dp)
             .verticalScroll(scrollState)
             .fillMaxSize()
     )
+
 }
 
 @Composable
