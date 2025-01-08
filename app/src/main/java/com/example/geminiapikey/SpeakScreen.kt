@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -78,10 +79,12 @@ fun RequestPermission(permission: String, onGranted: @Composable () -> Unit) {
 @Composable
 fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
     val context = LocalContext.current
-    var spokenText by remember { mutableStateOf("") }
+    var spokenText by remember { mutableStateOf("") } // This is where the recognized text will be stored
+    var partialText by remember { mutableStateOf("") } // For real-time partial results
     var isListening by remember { mutableStateOf(false) }
     var amplitude by remember { mutableFloatStateOf(0.1f) }
     var isSpeaking by remember { mutableStateOf(false) }
+    var currentTTSChunk by remember { mutableStateOf("") } // For displaying TTS progress
 
     val tts = remember {
         TextToSpeech(context) { status ->
@@ -98,23 +101,36 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
                 override fun onDone(utteranceId: String?) {
                     Log.d("SpeakScreen", "TTS onDone")
                     isSpeaking = false
+                    currentTTSChunk = "" // Clear the current chunk when done
                 }
 
-                @Deprecated("Deprecated in Java", ReplaceWith("isSpeaking = false"))
+                @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
                     Log.e("SpeakScreen", "TTS onError")
                     isSpeaking = false
+                    currentTTSChunk = "" // Clear the current chunk on error
+                }
+
+                override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+                    // Update the current TTS chunk in real-time
+                    currentTTSChunk = viewModel.uiState.value.let {
+                        when (it) {
+                            is UiState.Success -> it.outputText.substring(start, end)
+                            is UiState.Streaming -> it.partialText.substring(start, end)
+                            else -> ""
+                        }
+                    }
                 }
             })
         }
     }
 
     val uiState by viewModel.uiState.collectAsState()
-
     val speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
     val speechRecognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true) // Enable partial results
     }
 
     DisposableEffect(Unit) {
@@ -134,7 +150,7 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
         }
 
         override fun onRmsChanged(rmsdB: Float) {
-            // No need to update animation during listening
+            // You can use rmsdB to adjust the amplitude in real-time if needed
         }
 
         override fun onBufferReceived(buffer: ByteArray?) {}
@@ -150,11 +166,16 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
 
         override fun onResults(results: Bundle?) {
             isListening = false
-            spokenText = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.get(0) ?: ""
-            viewModel.sendPrompt(null, spokenText) // Send user input to ViewModel
+            val result = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.get(0) ?: ""
+            spokenText = result // Store the final recognized text here
+            partialText = "" // Clear partial text when final results are received
+            viewModel.sendPrompt(null, result) // Send user input to ViewModel
         }
 
-        override fun onPartialResults(partialResults: Bundle?) {}
+        override fun onPartialResults(partialResults: Bundle?) {
+            val partialResult = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.get(0) ?: ""
+            partialText = partialResult
+        }
 
         override fun onEvent(eventType: Int, params: Bundle?) {}
     })
@@ -166,20 +187,29 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Display TTS progress or recognition results
         Text(
-            text = spokenText.ifEmpty { "Speak something!" },
+            text = when {
+                isSpeaking -> currentTTSChunk.ifEmpty { "Speaking..." }
+                isListening -> partialText.ifEmpty { "Listening..." }
+                else -> "Speak something!"
+            },
             modifier = Modifier.padding(16.dp)
         )
 
-        // Only show animated lines when TTS is speaking, not while listening
-        if (isSpeaking) {
-            AnimatedLines(amplitude = amplitude)  // Use amplitude based on TTS state
-        }
+        AnimatedLines(
+            amplitude = if (isSpeaking) amplitude else 1f,
+            isSpeaking = isSpeaking
+        )
 
         Button(onClick = {
             if (isListening) {
                 speechRecognizer.stopListening()
             } else {
+                if (isSpeaking) {
+                    tts.stop() // Stop TTS if it is currently speaking
+                    isSpeaking = false
+                }
                 val hasPermission = ContextCompat.checkSelfPermission(
                     context,
                     android.Manifest.permission.RECORD_AUDIO
@@ -199,16 +229,16 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
     when (val state = uiState) {
         is UiState.Success -> {
             LaunchedEffect(state) {
-                // Only speak once the full response is received
                 amplitude = 0.6f
+                // Let TTS handle chunk-based updates
                 tts.speak(state.outputText, TextToSpeech.QUEUE_FLUSH, null, "utteranceId")
             }
         }
 
         is UiState.Streaming -> {
             LaunchedEffect(state) {
-                // Speak each new chunk as it streams
                 amplitude = 0.6f
+                // Handle partial streaming dynamically
                 tts.speak(state.partialText, TextToSpeech.QUEUE_ADD, null, "utteranceId")
             }
         }
@@ -224,21 +254,24 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
 }
 
 @Composable
-fun AnimatedLines(amplitude: Float) {
+fun AnimatedLines(amplitude: Float, isSpeaking: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "Irregular Voice Lines")
     val lineCount = 10
-    val randomAmplitudes = remember { List(lineCount) { Random.nextDouble(0.5, 1.0).toFloat() } }
-
-    val lineHeights = randomAmplitudes.map { _ ->
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = Random.nextInt(300, 700), easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "Irregular Line Height"
-        )
+    val staticAmplitudes = listOf(0.3f, 0.5f, 0.7f, 0.4f, 0.6f, 0.8f, 0.5f, 0.7f, 0.6f, 0.4f)
+    val lineHeights = if (isSpeaking){
+        List(lineCount) {
+            infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = Random.nextInt(300, 700), easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "Irregular Line Height"
+            )
+        }
+    } else {
+        staticAmplitudes.map { mutableFloatStateOf(it) }
     }
 
     Canvas(
@@ -251,7 +284,7 @@ fun AnimatedLines(amplitude: Float) {
 
         lineHeights.forEachIndexed { index, animation ->
             val height by animation
-            val dynamicHeight = height * amplitude * randomAmplitudes[index] * size.height / 2
+            val dynamicHeight = height * amplitude * size.height / 2
             drawLine(
                 color = Color.Magenta,
                 start = Offset(
@@ -262,7 +295,8 @@ fun AnimatedLines(amplitude: Float) {
                     x = spaceBetween * index + lineWidth / 2,
                     y = size.height / 2 + dynamicHeight
                 ),
-                strokeWidth = lineWidth
+                strokeWidth = lineWidth,
+                cap = StrokeCap.Round
             )
         }
     }
