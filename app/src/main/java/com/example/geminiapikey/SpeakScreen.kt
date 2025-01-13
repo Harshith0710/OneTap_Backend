@@ -9,6 +9,7 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
@@ -108,13 +109,13 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
                 override fun onDone(utteranceId: String?) {
                     isSpeaking = false
                     currentTTSChunk = ""
-                    displayedText = "" // Clear displayed text when TTS is done
+                    displayedText = ""
                 }
 
                 override fun onError(utteranceId: String?) {
                     isSpeaking = false
                     currentTTSChunk = ""
-                    displayedText = "" // Clear displayed text on TTS error
+                    displayedText = ""
                 }
 
                 override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
@@ -191,18 +192,16 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Image(
+            painter = painterResource(R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_2),
+            contentDescription = null,
+            modifier= Modifier.size(80.dp)
+        )
         Text(
-            text = partialText,
+            text = if (isListening) partialText else displayedText,
             color = Color.White,
             modifier = Modifier.padding(16.dp)
         )
-
-        Text(
-            text = displayedText,
-            color = Color.White,
-            modifier = Modifier.padding(16.dp)
-        )
-
         AnimatedLines(amplitude = if (isSpeaking) amplitude else 1f, isSpeaking = isSpeaking)
 
         Text(
@@ -210,7 +209,6 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
             color = Color.White,
             modifier = Modifier.padding(16.dp)
         )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -219,18 +217,22 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Box(
-                modifier = Modifier.size(50.dp), // Set the size of the outer Box
-                contentAlignment = Alignment.Center // Center-align the content inside the Box
+                modifier = Modifier
+                    .size(50.dp)
+                    .clickable {
+                        context.startActivity(Intent(context, BakingActivity::class.java))
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(R.drawable.ellipse_84),
-                    contentDescription = "",
-                    modifier = Modifier.fillMaxSize() // Fill the outer Box
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize()
                 )
                 Image(
                     painter = painterResource(R.drawable.keyboard_10_1),
-                    contentDescription = "",
-                    modifier = Modifier.size(25.dp) // Size for the inner image
+                    contentDescription = null,
+                    modifier = Modifier.size(25.dp)
                 )
             }
             CircularPulseAnimation(
@@ -241,16 +243,22 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
                 tts = tts,
                 onPermissionDenied = {
                     Toast.makeText(context, "Permission denied. Please enable microphone access.", Toast.LENGTH_SHORT).show()
-                }
+                },
+                onTtsStop = {isSpeaking = false}
             )
             Box(
-                modifier = Modifier.size(50.dp), // Set the size of the outer Box
-                contentAlignment = Alignment.Center // Center-align the content inside the Box
+                modifier = Modifier.size(50.dp)
+                    .clickable{
+                        if (context is ComponentActivity) {
+                            context.onBackPressedDispatcher.onBackPressed()
+                        }
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(R.drawable.ellipse_85),
                     contentDescription = "",
-                    modifier = Modifier.fillMaxSize() // Fill the outer Box
+                    modifier = Modifier.fillMaxSize()
                 )
                 Image(
                     painter = painterResource(R.drawable.fi_rr_cross_small_1_1),
@@ -342,7 +350,8 @@ fun CircularPulseAnimation(
     speechRecognizer: SpeechRecognizer,
     speechRecognizerIntent: Intent,
     tts: TextToSpeech,
-    onPermissionDenied: () -> Unit
+    onPermissionDenied: () -> Unit,
+    onTtsStop : () -> Unit
 ) {
     val context = LocalContext.current
     val infiniteTransition = rememberInfiniteTransition(label = "")
@@ -406,6 +415,7 @@ fun CircularPulseAnimation(
                     } else {
                         if (isSpeaking) {
                             tts.stop()
+                            onTtsStop()
                         }
                         val hasPermission = ContextCompat.checkSelfPermission(
                             context,
