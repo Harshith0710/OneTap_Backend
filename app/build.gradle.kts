@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.generativeai)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.benchmark.common)
+    implementation(libs.androidx.room.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -67,7 +68,6 @@ dependencies {
     implementation(libs.material3)
     implementation(libs.ui.tooling.preview)
     implementation(libs.androidx.constraintlayout.compose)
-    implementation (libs.google.play.services.ads.v2200)
     implementation(libs.androidx.core.splashscreen)
     implementation (libs.androidx.runtime.saveable)
 }

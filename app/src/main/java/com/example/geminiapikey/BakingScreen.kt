@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,13 +18,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,16 +40,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat.getColor
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -57,12 +62,9 @@ fun BakingScreen(
     context: Context,
     bakingViewModel: BakingViewModel = viewModel()
 ) {
-    val placeholderPrompt = stringResource(R.string.prompt_placeholder)
-    var prompt by rememberSaveable { mutableStateOf(placeholderPrompt) }
+    var prompt by rememberSaveable { mutableStateOf("") }
     val uiState by bakingViewModel.uiState.collectAsState()
     var displayedText by remember { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = Modifier
@@ -121,7 +123,7 @@ fun BakingScreen(
                         .requiredSize(32.dp)
                 )
                 Image(
-                    painter = painterResource(R.drawable.icon_share_alt__component_additional_icons), // Replace with your share icon resource
+                    painter = painterResource(R.drawable.icon_share_alt__component_additional_icons),
                     contentDescription = "Share",
                     modifier = Modifier
                         .clickable {
@@ -176,29 +178,64 @@ fun BakingScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(all = 16.dp),
+                .padding(16.dp)
+                .background(Color(0xFF1E1E1E), shape = RoundedCornerShape(12.dp)),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextField(
                 value = prompt,
-                label = { Text(stringResource(R.string.label_prompt)) },
                 onValueChange = { prompt = it },
+                placeholder = {
+                    Text(
+                        "Ask your query ...",
+                        color = Color.Gray,
+                        style = TextStyle(fontStyle = FontStyle.Italic)
+                    )
+                },
+                textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 16.dp)
-                    .focusRequester(focusRequester)
+                    .padding(start = 16.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    cursorColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                )
             )
-
-            Button(
+            IconButton(
                 onClick = {
                     bakingViewModel.sendPrompt(null, prompt)
-                    focusManager.clearFocus()
+                    prompt = ""
                 },
-                enabled = prompt.isNotEmpty()
+                modifier = Modifier
+                    .padding(end = 8.dp) // Add padding to separate the button from the edge
+                    .size(36.dp) // Define the overall size of the button
             ) {
-                Text(text = stringResource(R.string.action_go))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize() // Ensure the circle fully fits within the IconButton
+                        .background(
+                            color = Color(0xFF1E1E1E), // Orange background for contrast with the white icon
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center // Center the icon inside the circle
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.send), // Replace with your send icon resource
+                        contentDescription = "Send",
+                        tint = Color.White, // White icon to match your design
+                        modifier = Modifier
+                            .size(24.dp) // Adjust icon size
+                    )
+                }
             }
         }
+
         BannerAdView(
             context = context,
             modifier = Modifier
@@ -276,3 +313,4 @@ fun BannerAdView(context: Context, modifier: Modifier, adUnitIdValue: String){
         modifier = modifier
     )
 }
+
