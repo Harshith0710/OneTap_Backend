@@ -1,4 +1,6 @@
 [versions]
+accompanistPagerIndicators = "0.33.2-alpha"
+accompanistPagerVersion = "0.33.2-alpha"
 agp = "8.7.3"
 constraintlayoutCompose = "1.1.0"
 coreSplashscreen = "1.0.1"
@@ -10,8 +12,8 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
 lifecycleViewmodelCompose = "2.8.7"
-activityCompose = "1.9.3"
-composeBom = "2024.12.01"
+activityCompose = "1.10.0"
+composeBom = "2025.01.00"
 generativeai = "0.9.0"
 googleAndroidLibrariesMapsplatformSecretsGradlePlugin = "2.0.1"
 material3 = "1.3.1"
@@ -24,6 +26,8 @@ benchmarkCommon = "1.3.3"
 roomKtx = "2.6.1"
 
 [libraries]
+accompanist-pager-indicators-v0332alpha = { module = "com.google.accompanist:accompanist-pager-indicators", version.ref = "accompanistPagerIndicators" }
+accompanist-pager-v0332alpha = { module = "com.google.accompanist:accompanist-pager", version.ref = "accompanistPagerVersion" }
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }

@@ -1,6 +1,5 @@
 package com.example.geminiapikey
 
-import UiState
 import android.content.Intent
 import android.os.Bundle
 import android.speech.RecognitionListener

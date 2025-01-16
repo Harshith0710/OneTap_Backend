@@ -1,6 +1,5 @@
 package com.example.geminiapikey
 
-import UiState
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

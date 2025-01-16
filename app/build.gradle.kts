@@ -70,4 +70,6 @@ dependencies {
     implementation(libs.androidx.constraintlayout.compose)
     implementation(libs.androidx.core.splashscreen)
     implementation (libs.androidx.runtime.saveable)
+    implementation(libs.accompanist.pager.v0332alpha)
+    implementation(libs.accompanist.pager.indicators.v0332alpha)
 }

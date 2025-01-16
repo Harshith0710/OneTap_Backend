@@ -35,6 +35,9 @@
         <activity android:name=".SpeakActivity"
             android:exported="true"
             android:theme="@style/Theme.GeminiAPIKey" />
+        <activity android:name=".SwipeActivity"
+            android:exported="true"
+            android:theme="@style/Theme.GeminiAPIKey" />
     </application>
 
 </manifest>

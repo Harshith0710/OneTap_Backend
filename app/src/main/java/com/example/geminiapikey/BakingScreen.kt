@@ -1,6 +1,5 @@
 package com.example.geminiapikey
 
-import UiState
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
