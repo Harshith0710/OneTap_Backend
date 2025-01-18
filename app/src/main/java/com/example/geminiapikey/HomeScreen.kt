@@ -3,32 +3,70 @@ package com.example.geminiapikey
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(onActionClick: (String) -> Unit) {
-    MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            QuickTapUIScreen(onActionClick)
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            SidePanel (
+                onClose = { scope.launch { drawerState.close() } }
+            )
         }
+    ) {
+        QuickTapUIScreen(
+            onActionClick = onActionClick,
+            onMenuClick = { scope.launch { drawerState.open() } }
+        )
     }
 }
 
 @Composable
-fun QuickTapUIScreen(onActionClick: (String) -> Unit) {
+fun QuickTapUIScreen(onActionClick: (String) -> Unit, onMenuClick: () -> Unit) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val buttonWidth = screenWidth / 2
@@ -50,14 +88,13 @@ fun QuickTapUIScreen(onActionClick: (String) -> Unit) {
                 .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.frame_3),
-                contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(64.dp)
-                    .padding(8.dp)
-
-            )
+            IconButton(onClick = onMenuClick) {
+                Icon(
+                    imageVector = Icons.Filled.Menu,
+                    contentDescription = "Menu",
+                    tint = Color.White
+                )
+            }
             Image(
                 painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_2),
                 contentDescription = "Profile Picture",
@@ -181,6 +218,118 @@ fun ActionButton(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+    }
+}
+
+@Composable
+fun SidePanel(onClose: () -> Unit) {
+    val view = LocalView.current
+    val insets = ViewCompat.getRootWindowInsets(view)?.getInsets(WindowInsetsCompat.Type.statusBars())
+    val heightPx = insets?.top ?: 0
+    val density = LocalDensity.current.density
+    val sidePanelHeight = heightPx / density
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val sidePanelWidth = screenWidth * 0.75f // 75% of the screen width
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                onClick = {
+                    onClose()
+                }
+            )
+    ) {
+        ModalDrawerSheet(
+            drawerContainerColor = Color(52, 71, 75, 240), // Transparent to show the background image
+            modifier = Modifier
+                .width(sidePanelWidth)
+                .padding(top = sidePanelHeight.dp)
+                .clickable(
+                    onClick = {
+                        // Do nothing on click, to avoid closing the side panel
+                    }
+                )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                // Overlay content on top of the blurred background
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                ) {
+                    // Title and close button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "QuickTap AI",
+                            fontSize = 28.sp, // Larger font size for the title
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                        IconButton(onClick = onClose) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Close",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Menu items
+                    MenuItem("Home", Icons.Default.Home)
+                    MenuItem("Privacy Policy", Icons.Default.Lock)
+
+                    Spacer(modifier = Modifier.weight(1f)) // Pushes the "Logout" button to the bottom
+
+                    // Logout button with styling
+                    Text(
+                        text = "Logout",
+                        fontSize = 20.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clickable(
+                                onClick = { /* Handle logout */ }
+                            )
+                            .align(Alignment.CenterHorizontally)
+                            .padding(horizontal = 32.dp, vertical = 12.dp) // Padding inside the button
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MenuItem(title: String, icon: ImageVector) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { /* Handle click for menu item */ }
+            .padding(vertical = 16.dp), // Increased vertical padding
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(28.dp) // Slightly larger icon size
+        )
+        Spacer(modifier = Modifier.width(20.dp)) // Increased space between icon and text
+        Text(
+            text = title,
+            fontSize = 20.sp, // Larger font size for menu items
+            fontWeight = FontWeight.Medium,
+            color = Color.White
+        )
     }
 }
 
