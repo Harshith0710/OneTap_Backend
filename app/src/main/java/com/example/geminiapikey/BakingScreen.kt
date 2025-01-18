@@ -8,35 +8,14 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,196 +42,303 @@ fun BakingScreen(
 ) {
     var prompt by rememberSaveable { mutableStateOf("") }
     val uiState by bakingViewModel.uiState.collectAsState()
-    var displayedText by remember { mutableStateOf("") }
+    val promptResponseList = remember { mutableStateListOf<Pair<String, String>>() }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(getColor(context, R.color.splash_background)))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.icons),
-                contentDescription = "Go Back",
-                modifier = Modifier
-                    .clickable {
-                        if (context is ComponentActivity) {
-                            context.onBackPressedDispatcher.onBackPressed()
-                        }
-                    }
-                    .padding(8.dp)
-                    .requiredSize(32.dp)
-            )
-            Spacer(modifier = Modifier.weight(0.8f))
-            Image(
-                painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_1),
-                contentDescription = "App Icon"
-            )
-            Spacer(modifier = Modifier.weight(1f))
-        }
-
         Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+                .fillMaxSize()
         ) {
-            Row(
+            // Header Section
+            Header(context)
+
+            // Content Section with scrolling
+            Box(
+                modifier = Modifier
+                    .weight(1f) // Allocate remaining space
+                    .fillMaxWidth()
+            ) {
+                ContentSection(context, uiState, promptResponseList)
+            }
+            Spacer(modifier = Modifier.height(120.dp))
+        }
+
+        // Fixed Input and Ad Section at the Bottom
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()// Background for input and ads
+        ) {
+            // Input Section
+            InputSection(
+                prompt = prompt,
+                onPromptChange = { prompt = it },
+                onSendClick = {
+                    bakingViewModel.sendPrompt(null, prompt)
+                    promptResponseList.add(Pair(prompt, "")) // Add the prompt to the list
+                    prompt = ""
+                }
+            )
+
+            // Banner Ad Section
+            BannerAdView(
+                context = context,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.icon_copy__component_additional_icons),
-                    contentDescription = "Copy",
-                    modifier = Modifier
-                        .clickable {
-                            val clipboardManager =
-                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clipData =
-                                ClipData.newPlainText("Copied Text", displayedText)
-                            clipboardManager.setPrimaryClip(clipData)
-                        }
-                        .padding(8.dp)
-                        .requiredSize(32.dp)
-                )
-                Image(
-                    painter = painterResource(R.drawable.icon_share_alt__component_additional_icons),
-                    contentDescription = "Share",
-                    modifier = Modifier
-                        .clickable {
-                            val boldPrompt = "**${prompt.trim()}**"
-                            val shareText = "$boldPrompt\n\nResponse: $displayedText"
+                    .height(50.dp),
+                adUnitIdValue = "ca-app-pub-3940256099942544/6300978111"
+            )
+        }
+    }
+}
 
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                            }
-                            context.startActivity(
-                                Intent.createChooser(
-                                    shareIntent,
-                                    "Share Chat"
-                                )
-                            )
-                        }
-                        .padding(8.dp)
-                        .requiredSize(32.dp)
-                )
-            }
+@Composable
+fun ContentSection(
+    context: Context,
+    uiState: UiState,
+    promptResponseList: MutableList<Pair<String, String>>
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .verticalScroll(rememberScrollState()) // Enable scrolling
+    ) {
+        promptResponseList.forEachIndexed { _, pair ->
+            val currentPrompt = pair.first
+            val currentResponse = pair.second
 
-            when (uiState) {
-                is UiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                }
-
-                is UiState.Streaming -> {
-                    val fullText = (uiState as UiState.Streaming).partialText
-                    TypingEffectText(
-                        fullText,
-                        onTypingComplete = { displayedText = fullText })
-                }
-
-                is UiState.Success -> {
-                    displayedText = (uiState as UiState.Success).outputText
-                    TypingEffectText(displayedText)
-                }
-
-                is UiState.Error -> {
-                    Text(
-                        text = (uiState as UiState.Error).errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
+            // Display the prompt and response unit
+            PromptResponseUnit(
+                prompt = currentPrompt,
+                response = currentResponse,
+                onCopy = {
+                    val clipboardManager =
+                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clipData =
+                        ClipData.newPlainText("Copied Text", currentResponse)
+                    clipboardManager.setPrimaryClip(clipData)
+                },
+                onShare = {
+                    val shareText = "$currentPrompt\n\nResponse: $currentResponse"
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                    }
+                    context.startActivity(
+                        Intent.createChooser(shareIntent, "Share Chat")
                     )
                 }
+            )
 
-                else -> Unit
-            }
+            Spacer(modifier = Modifier.height(8.dp)) // Add space between units
         }
+
+        // Handle the UI state (loading, streaming, success, error)
+        when (uiState) {
+            is UiState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
+
+            is UiState.Streaming -> {
+                val fullText = uiState.partialText
+                promptResponseList.lastOrNull()?.let {
+                    promptResponseList[promptResponseList.lastIndex] = it.copy(second = fullText)
+                }
+            }
+
+            is UiState.Success -> {
+                promptResponseList.lastOrNull()?.let {
+                    promptResponseList[promptResponseList.lastIndex] = it.copy(second = uiState.outputText)
+                }
+            }
+
+            is UiState.Error -> {
+                Text(
+                    text = uiState.errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            else -> Unit
+        }
+    }
+}
+
+@Composable
+fun PromptResponseUnit(
+    prompt: String,
+    response: String,
+    onCopy: () -> Unit,
+    onShare: () -> Unit
+) {
+    var typingComplete by remember { mutableStateOf(false) } // Track if typing is complete
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ellipse_78),
+                contentDescription = "Profile Picture",
+                modifier = Modifier
+                    .size(48.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = prompt,
+                color = Color.White,
+                style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(8.dp)
+            )
+        }
+
+        // White line between prompt and response
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = Color.Gray,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .background(Color(0xFF1E1E1E), shape = RoundedCornerShape(12.dp)),
+                .padding(horizontal = 16.dp), // Optional padding for better spacing
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextField(
-                value = prompt,
-                onValueChange = { prompt = it },
-                placeholder = {
-                    Text(
-                        "Ask your query ...",
-                        color = Color.Gray,
-                        style = TextStyle(fontStyle = FontStyle.Italic)
-                    )
-                },
-                textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    cursorColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
-                )
+            // Profile Picture
+            Image(
+                painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_2),
+                contentDescription = "Profile Picture",
+                modifier = Modifier.size(36.dp)
             )
-            IconButton(
-                onClick = {
-                    bakingViewModel.sendPrompt(null, prompt)
-                    prompt = ""
-                },
-                modifier = Modifier
-                    .padding(end = 8.dp) // Add padding to separate the button from the edge
-                    .size(36.dp) // Define the overall size of the button
+
+            // Right-aligned action buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp), // Space between buttons
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize() // Ensure the circle fully fits within the IconButton
-                        .background(
-                            color = Color(0xFF1E1E1E), // Orange background for contrast with the white icon
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center // Center the icon inside the circle
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.send), // Replace with your send icon resource
-                        contentDescription = "Send",
-                        tint = Color.White, // White icon to match your design
-                        modifier = Modifier
-                            .size(24.dp) // Adjust icon size
-                    )
-                }
+                ActionButton(
+                    icon = R.drawable.icon_copy__component_additional_icons,
+                    contentDescription = "Copy",
+                    onClick = onCopy
+                )
+                ActionButton(
+                    icon = R.drawable.icon_share_alt__component_additional_icons,
+                    contentDescription = "Share",
+                    onClick = onShare
+                )
             }
         }
 
-        BannerAdView(
-            context = context,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            adUnitIdValue = "ca-app-pub-3940256099942544/6300978111"
+        TypingEffectText(
+            fullText = response,
+            typingSpeed = 30L,
+            onTypingComplete = {
+                typingComplete = true // Mark typing as complete
+            }
         )
+
+        // Only show the second horizontal line if typing is complete
+        if (typingComplete) {
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionButton(icon: Int, contentDescription: String, onClick: () -> Unit) {
+    Image(
+        painter = painterResource(icon),
+        contentDescription = contentDescription,
+        modifier = Modifier
+            .clickable { onClick() }
+            .padding(8.dp)
+            .requiredSize(16.dp)
+    )
+}
+
+@Composable
+fun InputSection(prompt: String, onPromptChange: (String) -> Unit, onSendClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .background(Color(0xFF1E1E1E), shape = RoundedCornerShape(12.dp)),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextField(
+            value = prompt,
+            onValueChange = onPromptChange,
+            placeholder = {
+                Text(
+                    "Ask your query ...",
+                    color = Color.Gray,
+                    style = TextStyle(fontStyle = FontStyle.Italic)
+                )
+            },
+            textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 16.dp),
+            colors = TextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                cursorColor = Color.White,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent
+            )
+        )
+        IconButton(
+            onClick = onSendClick,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(36.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        color = Color(0xFF1E1E1E),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.send),
+                    contentDescription = "Send",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
     }
 }
 
 @Composable
 fun TypingEffectText(
     fullText: String,
-    typingSpeed: Long = 10L,
+    typingSpeed: Long = 30L,
     onTypingComplete: (() -> Unit)? = null
 ) {
     var animatedText by remember { mutableStateOf("") }
-    val scrollState = rememberScrollState()
 
     LaunchedEffect(fullText) {
         animatedText = ""
@@ -264,22 +350,25 @@ fun TypingEffectText(
     }
 
     val annotatedText = buildAnnotatedString {
-        val regex = Regex("\\*\\*(.*?)\\*\\*")
+        val regex = Regex("\\*\\*(.*?)\\*\\*") // Matches text within double asterisks
         var lastIndex = 0
 
         regex.findAll(animatedText).forEach { matchResult ->
             val startIndex = matchResult.range.first
             val endIndex = matchResult.range.last + 1
 
+            // Add plain text before the bold section
             append(animatedText.substring(lastIndex, startIndex))
 
+            // Add bold text
             pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
-            append(matchResult.groupValues[1])
+            append(matchResult.groupValues[1]) // Extract bold content
             pop()
 
             lastIndex = endIndex
         }
 
+        // Add remaining plain text
         if (lastIndex < animatedText.length) {
             append(animatedText.substring(lastIndex))
         }
@@ -288,28 +377,52 @@ fun TypingEffectText(
     Text(
         text = annotatedText,
         color = Color.White,
-        modifier = Modifier
-            .padding(16.dp)
-            .verticalScroll(scrollState)
-            .fillMaxSize()
+        style = TextStyle(fontSize = 16.sp),
+        modifier = Modifier.padding(16.dp)
     )
-
 }
 
 @Composable
-fun BannerAdView(context: Context, modifier: Modifier, adUnitIdValue: String){
+fun Header(context: Context) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.icons),
+            contentDescription = "Go Back",
+            modifier = Modifier
+                .clickable {
+                    if (context is ComponentActivity) {
+                        context.onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+                .padding(8.dp)
+                .requiredSize(32.dp)
+        )
+        Spacer(modifier = Modifier.weight(0.8f))
+        Image(
+            painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_1),
+            contentDescription = "App Icon"
+        )
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+fun BannerAdView(context: Context, modifier: Modifier, adUnitIdValue: String) {
     AndroidView(
         factory = {
             AdView(context).apply {
                 setAdSize(AdSize.BANNER)
                 adUnitId = adUnitIdValue
                 loadAd(
-                    AdRequest.Builder()
-                        .build()
+                    AdRequest.Builder().build()
                 )
             }
         },
         modifier = modifier
     )
 }
-
