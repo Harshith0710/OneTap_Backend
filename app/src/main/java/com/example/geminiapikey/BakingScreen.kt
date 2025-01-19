@@ -1,24 +1,59 @@
 package com.example.geminiapikey
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -41,8 +76,21 @@ fun BakingScreen(
     bakingViewModel: BakingViewModel = viewModel()
 ) {
     var prompt by rememberSaveable { mutableStateOf("") }
+    var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
     val uiState by bakingViewModel.uiState.collectAsState()
-    val promptResponseList = remember { mutableStateListOf<Pair<String, String>>() }
+    val promptResponseList = remember { mutableStateListOf<Triple<String, String, Bitmap?>>() }
+
+    context as? Activity
+
+    val imageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            uri?.let {
+                val bitmap = getBitmapFromUri(context.contentResolver, it)
+                selectedImage = bitmap
+            }
+        }
+    )
 
     Box(
         modifier = Modifier
@@ -53,38 +101,43 @@ fun BakingScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // Header Section
             Header(context)
 
-            // Content Section with scrolling
             Box(
                 modifier = Modifier
-                    .weight(1f) // Allocate remaining space
+                    .weight(1f)
                     .fillMaxWidth()
             ) {
-                ContentSection(context, uiState, promptResponseList)
+                ContentSection(
+                    context = context,
+                    uiState = uiState,
+                    promptResponseList = promptResponseList
+                )
             }
             Spacer(modifier = Modifier.height(120.dp))
         }
 
-        // Fixed Input and Ad Section at the Bottom
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()// Background for input and ads
+                .fillMaxWidth()
         ) {
-            // Input Section
             InputSection(
                 prompt = prompt,
                 onPromptChange = { prompt = it },
                 onSendClick = {
-                    bakingViewModel.sendPrompt(null, prompt)
-                    promptResponseList.add(Pair(prompt, "")) // Add the prompt to the list
-                    prompt = ""
+                    if(prompt!=""){
+                        bakingViewModel.sendPrompt(selectedImage, prompt)
+                        promptResponseList.add(Triple(prompt, "", selectedImage))
+                        prompt = ""
+                        selectedImage = null
+                    }
+                },
+                onImageSelectClick = {
+                    imageLauncher.launch("image/*")
                 }
             )
 
-            // Banner Ad Section
             BannerAdView(
                 context = context,
                 modifier = Modifier
@@ -96,23 +149,31 @@ fun BakingScreen(
     }
 }
 
+fun getBitmapFromUri(contentResolver: ContentResolver, uri: Uri): Bitmap? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val source = ImageDecoder.createSource(contentResolver, uri)
+        ImageDecoder.decodeBitmap(source)
+    }
+    else {
+        MediaStore.Images.Media.getBitmap(contentResolver, uri)
+    }
+}
+
 @Composable
 fun ContentSection(
     context: Context,
     uiState: UiState,
-    promptResponseList: MutableList<Pair<String, String>>
+    promptResponseList: MutableList<Triple<String, String, Bitmap?>>
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .verticalScroll(rememberScrollState()) // Enable scrolling
+            .verticalScroll(rememberScrollState())
     ) {
-        promptResponseList.forEachIndexed { _, pair ->
-            val currentPrompt = pair.first
-            val currentResponse = pair.second
+        promptResponseList.forEachIndexed { _, triple ->
+            val (currentPrompt, currentResponse, currentImage) = triple
 
-            // Display the prompt and response unit
             PromptResponseUnit(
                 prompt = currentPrompt,
                 response = currentResponse,
@@ -132,13 +193,13 @@ fun ContentSection(
                     context.startActivity(
                         Intent.createChooser(shareIntent, "Share Chat")
                     )
-                }
+                },
+                uploadedImage = currentImage
             )
 
-            Spacer(modifier = Modifier.height(8.dp)) // Add space between units
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Handle the UI state (loading, streaming, success, error)
         when (uiState) {
             is UiState.Loading -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -175,10 +236,9 @@ fun PromptResponseUnit(
     prompt: String,
     response: String,
     onCopy: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    uploadedImage: Bitmap?
 ) {
-    var typingComplete by remember { mutableStateOf(false) } // Track if typing is complete
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -190,42 +250,48 @@ fun PromptResponseUnit(
             Image(
                 painter = painterResource(id = R.drawable.ellipse_78),
                 contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(48.dp)
+                modifier = Modifier.size(36.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = prompt,
                 color = Color.White,
                 style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(8.dp)
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+        }
+        uploadedImage?.let {
+            Image(
+                bitmap = it.asImageBitmap(),
+                contentDescription = "Uploaded Image",
+                modifier = Modifier
+                    .height(150.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .padding(top = 4.dp, bottom = 8.dp)
             )
         }
 
-        // White line between prompt and response
         HorizontalDivider(
             thickness = 1.dp,
-            color = Color.Gray,
+            color = Color.Gray.copy(alpha = 0.5f),
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp), // Optional padding for better spacing
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile Picture
             Image(
                 painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_2),
                 contentDescription = "Profile Picture",
                 modifier = Modifier.size(36.dp)
             )
 
-            // Right-aligned action buttons
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp), // Space between buttons
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ActionButton(
@@ -243,20 +309,14 @@ fun PromptResponseUnit(
 
         TypingEffectText(
             fullText = response,
-            typingSpeed = 30L,
-            onTypingComplete = {
-                typingComplete = true // Mark typing as complete
-            }
+            typingSpeed = 30L
         )
 
-        // Only show the second horizontal line if typing is complete
-        if (typingComplete) {
-            HorizontalDivider(
-                thickness = 1.dp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = Color.Gray.copy(alpha = 0.5f),
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
     }
 }
 
@@ -273,7 +333,12 @@ fun ActionButton(icon: Int, contentDescription: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun InputSection(prompt: String, onPromptChange: (String) -> Unit, onSendClick: () -> Unit) {
+fun InputSection(
+    prompt: String,
+    onPromptChange: (String) -> Unit,
+    onSendClick: () -> Unit,
+    onImageSelectClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -306,6 +371,20 @@ fun InputSection(prompt: String, onPromptChange: (String) -> Unit, onSendClick: 
                 disabledIndicatorColor = Color.Transparent
             )
         )
+
+        IconButton(
+            onClick = onImageSelectClick,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(36.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.icon_image_upload),
+                contentDescription = "Select Image",
+                tint = Color.White
+            )
+        }
+
         IconButton(
             onClick = onSendClick,
             modifier = Modifier
@@ -335,8 +414,7 @@ fun InputSection(prompt: String, onPromptChange: (String) -> Unit, onSendClick: 
 @Composable
 fun TypingEffectText(
     fullText: String,
-    typingSpeed: Long = 30L,
-    onTypingComplete: (() -> Unit)? = null
+    typingSpeed: Long = 30L
 ) {
     var animatedText by remember { mutableStateOf("") }
 
@@ -346,29 +424,25 @@ fun TypingEffectText(
             animatedText += char
             delay(typingSpeed)
         }
-        onTypingComplete?.invoke()
     }
 
     val annotatedText = buildAnnotatedString {
-        val regex = Regex("\\*\\*(.*?)\\*\\*") // Matches text within double asterisks
+        val regex = Regex("\\*\\*(.*?)\\*\\*")
         var lastIndex = 0
 
         regex.findAll(animatedText).forEach { matchResult ->
             val startIndex = matchResult.range.first
             val endIndex = matchResult.range.last + 1
 
-            // Add plain text before the bold section
             append(animatedText.substring(lastIndex, startIndex))
 
-            // Add bold text
             pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
-            append(matchResult.groupValues[1]) // Extract bold content
+            append(matchResult.groupValues[1])
             pop()
 
             lastIndex = endIndex
         }
 
-        // Add remaining plain text
         if (lastIndex < animatedText.length) {
             append(animatedText.substring(lastIndex))
         }
@@ -381,6 +455,8 @@ fun TypingEffectText(
         modifier = Modifier.padding(16.dp)
     )
 }
+
+
 
 @Composable
 fun Header(context: Context) {

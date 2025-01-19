@@ -1,6 +1,7 @@
 package com.example.geminiapikey
 
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.ai.client.generativeai.GenerativeModel
@@ -42,7 +43,9 @@ class BakingViewModel : ViewModel() {
                 }
 
                 // Final state after the stream completes
-                _uiState.value = UiState.Success(accumulatedContent.toString())
+                // Assuming that the image URI can be derived from the bitmap or another response
+                val imageUri: Uri? = null // You can modify this part based on how you get the image URI
+                _uiState.value = UiState.Success(accumulatedContent.toString(), imageUri)
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(e.localizedMessage ?: "An error occurred")
             }
