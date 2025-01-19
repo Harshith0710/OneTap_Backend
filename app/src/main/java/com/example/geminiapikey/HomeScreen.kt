@@ -2,6 +2,7 @@ package com.example.geminiapikey
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -40,6 +42,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.ViewCompat
@@ -68,14 +71,23 @@ fun HomeScreen(onActionClick: (String) -> Unit) {
 @Composable
 fun QuickTapUIScreen(onActionClick: (String) -> Unit, onMenuClick: () -> Unit) {
     val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
     val screenWidth = configuration.screenWidthDp.dp
     val buttonWidth = screenWidth / 2
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF101010), Color(0xFF282828))
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFFFC1E3).copy(alpha = 0.6f), // Light pink
+                        Color(0xFF101010) // Dark background
+                    ),
+                    center = Offset(screenWidthPx / 2, screenHeightPx / 2), // Center in pixels
+                    radius = (screenWidthPx + screenHeightPx) / 5f // Adjust radius as needed
                 )
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -85,8 +97,9 @@ fun QuickTapUIScreen(onActionClick: (String) -> Unit, onMenuClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(top = 36.dp, bottom = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onMenuClick) {
                 Icon(
@@ -112,16 +125,17 @@ fun QuickTapUIScreen(onActionClick: (String) -> Unit, onMenuClick: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Hi, Mukesh 👋",
-            fontSize = 20.sp,
+            fontSize = 24.sp,
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "How may I help you today?",
-            fontSize = 18.sp,
+            text = "How may I help\n you today?",
+            fontSize = 32.sp,
             color = Color.White,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -135,12 +149,12 @@ fun QuickTapUIScreen(onActionClick: (String) -> Unit, onMenuClick: () -> Unit) {
                     .width(buttonWidth)
                     .height(buttonWidth + 4.dp)
             ) {
-                ActionButton("Chat with Bot", R.drawable.frame_5, Color(0xFFB39DDB), onActionClick,
+                ActionButton1("Chat with Bot", R.drawable.frame_5, Color(192, 159, 248), onActionClick,
                     Modifier
                         .fillMaxWidth()
                         .height(buttonWidth / 2))
                 Spacer(Modifier.height(4.dp))
-                ActionButton("Search by Image", R.drawable.frame_5__1_, Color(0xFFA5D6A7), onActionClick,
+                ActionButton1("Search by Image", R.drawable.frame_5__2_, Color(176,176,176), onActionClick,
                     Modifier
                         .fillMaxWidth()
                         .height(buttonWidth / 2))
@@ -152,33 +166,24 @@ fun QuickTapUIScreen(onActionClick: (String) -> Unit, onMenuClick: () -> Unit) {
                     .height(buttonWidth + 4.dp)
                     .padding(2.dp)
             ) {
-                ActionButton("Talk with Bot", R.drawable.frame_5__2_, Color(0xFFF48FB1), onActionClick,
+                ActionButton2("Talk \nwith Bot", R.drawable.frame_5__1_, Color(254,196,221), onActionClick,
                     Modifier
                         .fillMaxWidth()
                         .height(buttonWidth + 4.dp))
             }
         }
         Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = "Fun Things To Do",
-            fontSize = 16.sp,
-            color = Color.White,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(16.dp))
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            FunOption("Lyrics", "Generate lyrics of a song for any music genre.")
-            FunOption("Reply Writer", "Write an awesome reply to messages, emails and more.")
+            FunOption()
         }
     }
 }
 
 @Composable
-fun ActionButton(
+fun ActionButton1(
     text: String,
     image: Int,
     color: Color,
@@ -187,12 +192,12 @@ fun ActionButton(
 ) {
     Box(
         modifier = modifier
-            .background(color, shape = RoundedCornerShape(16.dp))
+            .background(color, shape = RoundedCornerShape(24.dp))
             .clickable { onActionClick(text) }
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column{
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -213,9 +218,51 @@ fun ActionButton(
                 text = text,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
                 color = Color.Black,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionButton2(
+    text: String,
+    image: Int,
+    color: Color,
+    onActionClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .background(color, shape = RoundedCornerShape(24.dp))
+            .clickable { onActionClick(text) }
+            .padding(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ){
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Image(
+                    painter = painterResource(image),
+                    contentDescription = "Action Icon",
+                    modifier = Modifier.size(32.dp)
+                )
+                Image(
+                    painter = painterResource(R.drawable._icon__arrow_forward_),
+                    contentDescription = "Forward Arrow",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            Text(
+                text = text,
+                fontSize = 36.sp,
+                color = Color.Black,
+                modifier = Modifier.padding(top = 16.dp)
             )
         }
     }
@@ -334,23 +381,63 @@ fun MenuItem(title: String, icon: ImageVector) {
 }
 
 @Composable
-fun FunOption(title: String, description: String) {
+fun FunOption() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .background(Color.Transparent) // Background color of the section
+            .padding(16.dp)
     ) {
         Text(
-            text = title,
-            fontSize = 16.sp,
+            text = "Fun Things To Do",
+            color = Color.White,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            modifier = Modifier.padding(bottom = 16.dp)
         )
-        Text(
-            text = description,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-            color = Color.Gray
+        ActionItem(
+            title = "Lyrics",
+            description = "Generate lyrics of a song for any music genre.",
+            icon = R.drawable.music_notes // Replace with your music icon drawable
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        ActionItem(
+            title = "Reply Writer",
+            description = "Write an awesome reply to messages, emails and more.",
+            icon = R.drawable.pen_new_square // Replace with your reply icon drawable
         )
     }
 }
+
+@Composable
+fun ActionItem(title: String, description: String, icon: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF161B22), shape = RoundedCornerShape(12.dp)) // Card background color
+            .border(1.dp, Color.Gray, shape = RoundedCornerShape(12.dp))
+            .padding(16.dp)
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(end = 16.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = description,
+                color = Color(0xFF9AA0A6), // Description text color
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
