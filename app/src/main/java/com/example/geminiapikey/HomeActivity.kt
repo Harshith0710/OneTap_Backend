@@ -19,7 +19,7 @@ class HomeActivity : ComponentActivity() {
     private fun handleActionButtonClick(action: String) {
         val intent = when (action) {
             "Chat with Bot" -> Intent(this, BakingActivity::class.java)
-            "Talk with Bot" -> Intent(this, SpeakActivity::class.java)
+            "Talk \nwith Bot" -> Intent(this, SpeakActivity::class.java)
             "Search by Image" -> Intent(this, BakingActivity::class.java)
             else -> null
         }
