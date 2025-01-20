@@ -12,7 +12,12 @@ class SwipeActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent{
             SwipeScreen(
-                context = LocalContext.current)
+                context = LocalContext.current,
+                onClick ={
+                    val sharedPreferences = getSharedPreferences("AppPrefs", MODE_PRIVATE)
+                    sharedPreferences.edit().putBoolean("isIntroShown", true).apply()
+                }
+            )
         }
     }
 }

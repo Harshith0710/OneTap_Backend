@@ -22,16 +22,28 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.sharp.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,14 +66,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat.getColor
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -79,7 +95,7 @@ fun BakingScreen(
     var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
     val uiState by bakingViewModel.uiState.collectAsState()
     val promptResponseList = remember { mutableStateListOf<Triple<String, String, Bitmap?>>() }
-
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     context as? Activity
 
     val imageLauncher = rememberLauncherForActivityResult(
@@ -96,12 +112,33 @@ fun BakingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(getColor(context, R.color.splash_background)))
+            .windowInsetsPadding(WindowInsets.safeContent.union(WindowInsets.navigationBars))
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Header(context)
+            Box(
+                modifier = Modifier
+                    .width(0.42f * screenWidth)
+                    .background(
+                        shape = RoundedCornerShape(50),
+                        color = Color.White
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "K.I.R.A",
+                    color = Color.Black,
+                    fontSize = 19.sp,
+                    textAlign = TextAlign.Center,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(5.dp),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -401,7 +438,7 @@ fun InputSection(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.send),
+                    painter = painterResource(R.drawable.send_ic),
                     contentDescription = "Send",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
@@ -463,7 +500,7 @@ fun Header(context: Context) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(top = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
@@ -475,13 +512,14 @@ fun Header(context: Context) {
                         context.onBackPressedDispatcher.onBackPressed()
                     }
                 }
-                .padding(8.dp)
+                .padding(start = 16.dp)
                 .requiredSize(32.dp)
         )
         Spacer(modifier = Modifier.weight(0.8f))
         Image(
             painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_1),
-            contentDescription = "App Icon"
+            contentDescription = "App Icon",
+            modifier = Modifier.size(120.dp)
         )
         Spacer(modifier = Modifier.weight(1f))
     }

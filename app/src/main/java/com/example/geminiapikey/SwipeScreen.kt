@@ -48,11 +48,11 @@ import androidx.compose.ui.unit.sp
 data class TabItem(val title: String, val screen: @Composable () -> Unit)
 
 @Composable
-fun SwipeScreen(context : Context) {
+fun SwipeScreen(context : Context, onClick: () -> Unit) {
     val tabs = listOf(
         TabItem("Tab 1") { Tab1Screen() },
         TabItem("Tab 2") { Tab2Screen() },
-        TabItem("Tab 3") { Tab3Screen(context) },
+        TabItem("Tab 3") { Tab3Screen(context, onClick) },
     )
     SwipableContent(tabs = tabs)
 }
@@ -265,7 +265,7 @@ fun Tab2Screen() {
 }
 
 @Composable
-fun Tab3Screen(context: Context) {
+fun Tab3Screen(context: Context, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -362,6 +362,7 @@ fun Tab3Screen(context: Context) {
             Button(
                 onClick = {
                     isPressed = !isPressed
+                    onClick()
                     context.startActivity(Intent(context, HomeActivity::class.java))
                 },
                 modifier = Modifier

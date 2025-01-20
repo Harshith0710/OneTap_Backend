@@ -1,5 +1,6 @@
 package com.example.geminiapikey
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.speech.RecognitionListener
@@ -23,6 +24,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,13 +39,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.random.Random
@@ -79,6 +94,7 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
     var isSpeaking by remember { mutableStateOf(false) }
     var currentTTSChunk by remember { mutableStateOf("") }
     val maxLineLength = 20
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     val lineCount = getLineCount(displayedText, maxLineLength)
 
@@ -160,11 +176,51 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color(ContextCompat.getColor(context, R.color.splash_background)))
-            .padding(16.dp),
+            .padding(top = 16.dp)
+            .windowInsetsPadding(WindowInsets.safeContent.union(WindowInsets.navigationBars)),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Image(painter = painterResource(R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_2), contentDescription = null, modifier = Modifier.size(80.dp))
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+
+            Image(
+                painter = painterResource(R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_1),
+                contentDescription = null,
+                modifier = Modifier.size(120.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .width(0.42f * screenWidth)
+                    .background(
+                        shape = RoundedCornerShape(50),
+                        color = Color.White
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "K.I.R.A",
+                    color = Color.Black,
+                    fontSize = 19.sp,
+                    textAlign = TextAlign.Center,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(5.dp),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Text(
+                text = "Voice AI Model",
+                color = Color.White,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(8.dp),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         AnimatedLines(amplitude = if (isSpeaking) amplitude else 1f, isSpeaking = isSpeaking)
         Text(
             text = if (isListening) partialText else displayedText,
@@ -187,10 +243,13 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
             Box(
                 modifier = Modifier
                     .size(50.dp)
+                    .background(
+                        color = Color(96,85,134),
+                        shape = CircleShape
+                    )
                     .clickable { context.startActivity(Intent(context, BakingActivity::class.java)) },
                 contentAlignment = Alignment.Center
             ) {
-                Image(painter = painterResource(R.drawable.ellipse_84), contentDescription = null, modifier = Modifier.fillMaxSize())
                 Image(painter = painterResource(R.drawable.keyboard_10_1), contentDescription = null, modifier = Modifier.size(25.dp))
             }
             CircularPulseAnimation(
@@ -204,13 +263,23 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
             )
             Box(
                 modifier = Modifier.size(50.dp)
+                    .background(
+                        color = Color(23,23,23),
+                        shape = CircleShape
+                    )
                     .clickable { if (context is ComponentActivity) { context.onBackPressedDispatcher.onBackPressed() } },
                 contentAlignment = Alignment.Center
             ) {
-                Image(painter = painterResource(R.drawable.ellipse_85), contentDescription = "", modifier = Modifier.fillMaxSize())
-                Image(painter = painterResource(R.drawable.fi_rr_cross_small_1_1), contentDescription = "", modifier = Modifier.size(25.dp))
+                Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(25.dp), tint = Color.White)
             }
         }
+        BannerAdView(
+            context = context,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            adUnitIdValue = "ca-app-pub-3940256099942544/6300978111"
+        )
     }
 
     when (val state = uiState) {
@@ -244,29 +313,48 @@ fun AnimatedLines(amplitude: Float, isSpeaking: Boolean) {
             infiniteTransition.animateFloat(
                 initialValue = 0f,
                 targetValue = 1f,
-                animationSpec = infiniteRepeatable(animation = tween(durationMillis = Random.nextInt(300, 700), easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+                animationSpec = infiniteRepeatable(
+                    animation = tween(
+                        durationMillis = Random.nextInt(300, 700),
+                        easing = LinearEasing
+                    ),
+                    repeatMode = RepeatMode.Reverse
+                ),
                 label = ""
             )
         }
     } else staticAmplitudes.map { mutableFloatStateOf(it) }
 
     Canvas(modifier = Modifier.size(200.dp).padding(16.dp)) {
-        val baseLineWidth = size.width / (lineCount * 5f)
-        val spaceBetween = size.width / (lineCount)
+        val baseLineWidth = size.width / (lineCount * 4f)
+        val spaceBetween = size.width / lineCount
+        val offsetX = (size.width - spaceBetween * (lineCount - 1)) / 2 // Adjust horizontal centering
 
         lineHeights.forEachIndexed { index, animation ->
             val height by animation
             var dynamicHeight = height * amplitude * size.height / 2
-            if (index == middleLineIndex || index == 0 || index == lineCount - 1) { dynamicHeight *= 1.5f }
-            val lineWidth = if (index == middleLineIndex) baseLineWidth * 1.2f else baseLineWidth * (1 - 0.1f * abs(middleLineIndex - index))
+            if (index == middleLineIndex || index == 0 || index == lineCount - 1) {
+                dynamicHeight *= 1.5f
+            }
+            val lineWidth = if (index == middleLineIndex) {
+                baseLineWidth * 1.2f
+            } else {
+                baseLineWidth * (1 - 0.1f * abs(middleLineIndex - index))
+            }
 
             val greenValue = (60 + index * (41 / (lineCount - 1))).coerceIn(0, 255)
             val blueValue = (166 - index * (62 / (lineCount - 1))).coerceIn(0, 255)
 
             drawLine(
                 color = Color(255, greenValue, blueValue),
-                start = Offset(x = spaceBetween * (index + 1) + lineWidth / 2, y = size.height / 2 - dynamicHeight),
-                end = Offset(x = spaceBetween * (index + 1) + lineWidth / 2, y = size.height / 2 + dynamicHeight),
+                start = Offset(
+                    x = offsetX + spaceBetween * index + lineWidth / 2,
+                    y = size.height / 2 - dynamicHeight
+                ),
+                end = Offset(
+                    x = offsetX + spaceBetween * index + lineWidth / 2,
+                    y = size.height / 2 + dynamicHeight
+                ),
                 strokeWidth = lineWidth,
                 cap = StrokeCap.Round
             )

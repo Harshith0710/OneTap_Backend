@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <bitmap
-            android:src="@drawable/small"
-            android:gravity="center"
-            android:tileMode="disabled" />
-    </item>
-</layer-list>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/small"
+    android:insetLeft="72dp"
+    android:insetRight="72dp"
+    android:insetTop="72dp"
+    android:insetBottom="72dp"/>
