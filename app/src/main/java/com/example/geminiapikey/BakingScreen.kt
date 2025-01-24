@@ -105,11 +105,9 @@ fun BakingScreen(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
             uri?.let {
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    Toast.makeText(context, "Image uploaded successfully!", Toast.LENGTH_SHORT).show()
-                }
                 val bitmap = getBitmapFromUri(context.contentResolver, it)
                 selectedImage = bitmap
+                Toast.makeText(context, "Image uploaded successfully!", Toast.LENGTH_SHORT).show()
             }
         }
     )
@@ -121,11 +119,11 @@ fun BakingScreen(
             .windowInsetsPadding(WindowInsets.safeContent.union(WindowInsets.navigationBars))
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Header(context)
+
             Box(
                 modifier = Modifier
                     .width(0.42f * screenWidth)
@@ -157,6 +155,7 @@ fun BakingScreen(
                     promptResponseList = promptResponseList
                 )
             }
+
             Spacer(modifier = Modifier.height(120.dp))
         }
 
@@ -169,16 +168,14 @@ fun BakingScreen(
                 prompt = prompt,
                 onPromptChange = { prompt = it },
                 onSendClick = {
-                    if(prompt!=""){
+                    if (prompt.isNotEmpty()) {
                         bakingViewModel.sendPrompt(selectedImage, prompt)
                         promptResponseList.add(Triple(prompt, "", selectedImage))
                         prompt = ""
                         selectedImage = null
                     }
                 },
-                onImageSelectClick = {
-                    imageLauncher.launch("image/*")
-                }
+                onImageSelectClick = { imageLauncher.launch("image/*") }
             )
 
             BannerAdView(
@@ -189,16 +186,6 @@ fun BakingScreen(
                 adUnitIdValue = "ca-app-pub-3940256099942544/6300978111"
             )
         }
-    }
-}
-
-fun getBitmapFromUri(contentResolver: ContentResolver, uri: Uri): Bitmap? {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        val source = ImageDecoder.createSource(contentResolver, uri)
-        ImageDecoder.decodeBitmap(source)
-    }
-    else {
-        MediaStore.Images.Media.getBitmap(contentResolver, uri)
     }
 }
 
@@ -223,8 +210,7 @@ fun ContentSection(
                 onCopy = {
                     val clipboardManager =
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clipData =
-                        ClipData.newPlainText("Copied Text", currentResponse)
+                    val clipData = ClipData.newPlainText("Copied Text", currentResponse)
                     clipboardManager.setPrimaryClip(clipData)
                 },
                 onShare = {
@@ -248,13 +234,6 @@ fun ContentSection(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             }
 
-            is UiState.Streaming -> {
-                val fullText = uiState.partialText
-                promptResponseList.lastOrNull()?.let {
-                    promptResponseList[promptResponseList.lastIndex] = it.copy(second = fullText)
-                }
-            }
-
             is UiState.Success -> {
                 promptResponseList.lastOrNull()?.let {
                     promptResponseList[promptResponseList.lastIndex] = it.copy(second = uiState.outputText)
@@ -273,6 +252,18 @@ fun ContentSection(
         }
     }
 }
+
+
+fun getBitmapFromUri(contentResolver: ContentResolver, uri: Uri): Bitmap? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val source = ImageDecoder.createSource(contentResolver, uri)
+        ImageDecoder.decodeBitmap(source)
+    }
+    else {
+        MediaStore.Images.Media.getBitmap(contentResolver, uri)
+    }
+}
+
 
 @Composable
 fun PromptResponseUnit(
