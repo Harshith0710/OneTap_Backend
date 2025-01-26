@@ -47,9 +47,21 @@ class MainActivity3 : ComponentActivity() {
             val confirmPassword = confirmPasswordInput.text.toString()
 
             // Input validation
-            if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+            if (email.isEmpty()) {
                 errorBar.visibility = View.VISIBLE
-                Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Email cannot be empty", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (password.isEmpty()) {
+                errorBar.visibility = View.VISIBLE
+                Toast.makeText(this, "Password cannot be empty", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (confirmPassword.isEmpty()) {
+                errorBar.visibility = View.VISIBLE
+                Toast.makeText(this, "Confirm Password cannot be empty", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -93,6 +105,7 @@ class MainActivity3 : ComponentActivity() {
                 passwordInput.transformationMethod = PasswordTransformationMethod.getInstance()
                 eyeButtonPassword.setImageResource(R.drawable.ic_closedeye) // Closed eye icon
             }
+            passwordInput.setSelection(passwordInput.text.length) // Retain cursor position
         }
 
         // Toggle Password Visibility for Confirm Password Field
@@ -104,6 +117,7 @@ class MainActivity3 : ComponentActivity() {
                 confirmPasswordInput.transformationMethod = PasswordTransformationMethod.getInstance()
                 eyeButtonConfirmPassword.setImageResource(R.drawable.ic_closedeye) // Closed eye icon
             }
+            confirmPasswordInput.setSelection(confirmPasswordInput.text.length) // Retain cursor position
         }
     }
 

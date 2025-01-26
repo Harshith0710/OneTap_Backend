@@ -1,5 +1,6 @@
 package com.example.geminiapikey
 
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -54,6 +56,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import coil.compose.rememberAsyncImagePainter
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
 
 @Composable
@@ -83,6 +88,7 @@ fun QuickTapUIScreen(onActionClick: (String) -> Unit, onMenuClick: () -> Unit) {
     val buttonWidth = screenWidth / 2
     val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
     val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+    val user: FirebaseUser? = FirebaseAuth.getInstance().currentUser
 Box(
     Modifier
         .fillMaxSize()
@@ -134,21 +140,17 @@ Box(
                 modifier = Modifier
                     .size(120.dp)
             )
-            Image(
-                painter = painterResource(id = R.drawable.ellipse_78),
-                contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(64.dp)
-                    .padding(8.dp)
-            )
+            ProfilePicture(photoUrl = user?.photoUrl)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Hi, Mukesh 👋",
-            fontSize = 24.sp,
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
+        if (user != null) {
+            Text(
+                text = "Hi, ${user.displayName}",
+                fontSize = 24.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = "How may I help\n you today?",
@@ -299,6 +301,7 @@ fun SidePanel(onClose: () -> Unit) {
     val sidePanelHeight = heightPx / density
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val sidePanelWidth = screenWidth * 0.75f // 75% of the screen width
+    val user: FirebaseUser? = FirebaseAuth.getInstance().currentUser
 
     Box(
         modifier = Modifier
@@ -350,7 +353,7 @@ fun SidePanel(onClose: () -> Unit) {
                     )
                     // Menu items
                     MenuItem("Home", Icons.Outlined.Home)
-                    MenuItem2("Mukesh Anand", R.drawable.ellipse_78)
+                    MenuItem2("${user?.displayName}", photoUrl = user?.photoUrl)
                     MenuItem("Privacy Policy", Icons.Outlined.Lock)
                     MenuItem2("Help Center",R.drawable.icons8_help_32)
                     MenuItem2("Terms of Use",R.drawable.icons8_analyze_64)
@@ -411,7 +414,7 @@ fun MenuItem(title: String, icon: ImageVector) {
 }
 
 @Composable
-fun MenuItem2(title: String, image: Int) {
+fun MenuItem2(title: String, image: Int? = null, photoUrl: Uri? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -419,11 +422,27 @@ fun MenuItem2(title: String, image: Int) {
             .padding(vertical = 16.dp), // Increased vertical padding
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(image),
-            contentDescription = null,
-            modifier = Modifier.size(28.dp) // Slightly larger icon size
-        )
+        // If photoUrl is available, display the profile picture, else use default image
+        if (photoUrl != null) {
+            Image(
+                painter = rememberAsyncImagePainter(photoUrl),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(Color.Gray) // Placeholder background
+            )
+        } else {
+            Image(
+                painter = painterResource(image ?: R.drawable.ellipse_78),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(Color.Gray) // Placeholder background
+            )
+        }
+
         Spacer(modifier = Modifier.width(20.dp)) // Increased space between icon and text
         Text(
             text = title,
@@ -496,3 +515,27 @@ fun ActionItem(title: String, description: String, icon: Int) {
     }
 }
 
+@Composable
+fun ProfilePicture(photoUrl: Uri?) {
+    if (photoUrl != null) {
+        Image(
+            painter = rememberAsyncImagePainter(photoUrl),
+            contentDescription = "Profile Picture",
+            modifier = Modifier
+                .size(64.dp)
+                .padding(8.dp)
+                .clip(CircleShape) // Ensure it's circular
+                .background(Color.Gray) // Placeholder background
+        )
+    } else {
+        // Fallback in case photoUrl is null
+        Image(
+            painter = painterResource(id = R.drawable.ellipse_78),
+            contentDescription = "Default Profile Picture",
+            modifier = Modifier
+                .size(64.dp)
+                .padding(8.dp)
+                .clip(CircleShape)
+        )
+    }
+}

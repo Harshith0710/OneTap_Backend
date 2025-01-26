@@ -1,7 +1,9 @@
 package com.example.geminiapikey
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +20,7 @@ import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 class HomeActivity : ComponentActivity() {
     private var interstitialAd: InterstitialAd? = null
     private var rewardedAd: RewardedAd? = null
+    val REQUEST_CAMERA = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,7 +100,11 @@ class HomeActivity : ComponentActivity() {
         val intent = when (action[0]) {
             'C' -> Intent(this, BakingActivity::class.java)
             'T' -> Intent(this, SpeakActivity::class.java)
-            'S' -> Intent(this, BakingActivity::class.java)
+            'S' -> {
+                val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                startActivityForResult(cameraIntent, REQUEST_CAMERA)
+                return
+            }
             else -> null
         }
         intent?.let {
@@ -131,5 +138,22 @@ class HomeActivity : ComponentActivity() {
             // If no ad is loaded, proceed directly
             onAdCompleted()
         }
+    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CAMERA && resultCode == RESULT_OK) {
+            val imageBitmap = data?.extras?.get("data") as? Bitmap
+            imageBitmap?.let {
+                // Pass the image to another activity
+                val intent = Intent(this, BakingActivity::class.java)
+                intent.putExtra("image", imageBitmap)
+                startActivity(intent)
+            }
+        }
+    }
+    override fun onBackPressed() {
+        super.onBackPressed()
+        // Exit the app when the back button is pressed
+        finishAffinity() // Closes all activities and exits the app
     }
 }

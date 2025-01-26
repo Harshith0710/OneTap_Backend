@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.geminiapikey.ui.theme.GeminiAPIKeyTheme
+import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -22,7 +23,7 @@ class MainActivity : ComponentActivity() {
         val isIntroShown = sharedPreferences.getBoolean("isIntroShown", false)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
+        FirebaseApp.initializeApp(this)
         setContent {
             var keepSplashScreeOn by remember { mutableStateOf(true) }
             splashScreen.setKeepOnScreenCondition { keepSplashScreeOn }
@@ -35,7 +36,7 @@ class MainActivity : ComponentActivity() {
 
                     if (!isIntroShown) {
                         // If intro hasn't been shown, navigate to IntroActivity
-                        context.startActivity(Intent(context, LoginActivity::class.java))
+                        context.startActivity(Intent(context, GetStartedActivity::class.java))
                     }
                     else {
                         // Proceed to main app logic

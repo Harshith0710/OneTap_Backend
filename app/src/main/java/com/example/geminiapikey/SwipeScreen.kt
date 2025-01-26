@@ -363,7 +363,7 @@ fun Tab3Screen(context: Context, onClick: () -> Unit) {
                 onClick = {
                     isPressed = !isPressed
                     onClick()
-                    context.startActivity(Intent(context, HomeActivity::class.java))
+                    context.startActivity(Intent(context, LoginActivity::class.java))
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
