@@ -91,8 +91,9 @@ import kotlinx.coroutines.launch
 fun BakingScreen(
     context: Context,
     image: Bitmap?,
-    conversations: List<String> = emptyList(), // Add conversations parameter
-    bakingViewModel: BakingViewModel = viewModel()
+    conversations: List<String> = emptyList(),
+    bakingViewModel: BakingViewModel = viewModel(),
+    prePrompt: String
 ) {
     var prompt by rememberSaveable { mutableStateOf("") }
     var selectedImage by remember { mutableStateOf<Bitmap?>(image) }
@@ -104,8 +105,78 @@ fun BakingScreen(
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     context as? Activity
 
-    // Initialize promptResponseList with conversations
-    LaunchedEffect(conversations) {
+    // Initialize promptResponseList with prePrompt and conversations
+    LaunchedEffect(prePrompt, conversations) {
+        if (prePrompt.isNotEmpty()) {
+            val prePromptResponse = if(prePrompt[0] == 'G') "(Verse 1)\n" +
+                    "The club isn't the best place to find a lover\n" +
+                    "So the bar is where I spend my nights\n" +
+                    "Drinking whiskey neat and losing all my inhibitions\n" +
+                    "'Cause all I really want is to find a girl\n" +
+                    "Write her in my notebook and never let her go\n" +
+                    "\n" +
+                    "(Pre-Chorus)\n" +
+                    "But then you walked in and my attention suddenly turned\n" +
+                    "My world shifted upside down\n" +
+                    "When you smiled at me, it almost felt like my heart stopped\n" +
+                    "\n" +
+                    "(Chorus)\n" +
+                    "The club isn't the best place to find a lover\n" +
+                    "At least I didn't think so\n" +
+                    "But you were the one I'd been waiting for\n" +
+                    "I don't know where you've been\n" +
+                    "But wherever it's been, it hasn't been with me\n" +
+                    "And after all this time\n" +
+                    "You're back in my life\n" +
+                    "You're back in my life\n" +
+                    "\n" +
+                    "(Verse 2)\n" +
+                    "Drinking from the bottle, neck down, no chaser\n" +
+                    "Feeling kinda lonely, yeah\n" +
+                    "But then you walked in and my attention suddenly turned\n" +
+                    "My world shifted upside down\n" +
+                    "When you smiled at me, it almost felt like my heart stopped\n" +
+                    "\n" +
+                    "(Chorus)\n" +
+                    "The club isn't the best place to find a lover\n" +
+                    "At least I didn't think so\n" +
+                    "But you were the one I'd been waiting for\n" +
+                    "I don't know where you've been\n" +
+                    "But wherever it's been, it hasn't been with me\n" +
+                    "And after all this time\n" +
+                    "You're back in my life\n" +
+                    "You're back in my life\n" +
+                    "\n" +
+                    "(Bridge)\n" +
+                    "Put your records on, ignore the noise\n" +
+                    "It's just another day\n" +
+                    "In paradise\n" +
+                    "On the dancefloor, your eyes meet mine\n" +
+                    "A single touch, and I'm yours\n" +
+                    "\n" +
+                    "(Chorus)\n" +
+                    "The club isn't the best place to find a lover\n" +
+                    "At least I didn't think so\n" +
+                    "But you were the one I'd been waiting for\n" +
+                    "I don't know where you've been\n" +
+                    "But wherever it's been, it hasn't been with me\n" +
+                    "And after all this time\n" +
+                    "You're back in my life\n" +
+                    "You're back in my life\n" +
+                    "\n" +
+                    "(Outro)\n" +
+                    "The club isn't the best place to find a lover\n" +
+                    "But I found you, and I'm never letting go\n" +
+                    "I'm never letting go\n" +
+                    "I'm never letting go\n" +
+                    "I'm never letting go\n" +
+                    "\n" +
+                    "I hope you enjoy these lyrics!" else "\"Thank you for your message/email. I appreciate you taking the time to [state their purpose - e.g., \"reach out,\" \"share your thoughts,\" \"provide an update\"]. I will [state your next action - e.g., \"review this carefully,\" \"consider your suggestions,\" \"respond in more detail shortly\"].\n" +
+                    "\n" +
+                    "In the meantime, please don't hesitate to [offer assistance - e.g., \"contact me if you have any further questions,\" \"let me know if you require anything else\"]." // Replace with actual logic
+            promptResponseList.add(Triple(prePrompt, prePromptResponse, null))
+        }
+
         conversations.forEach { conversation ->
             val (prompt, response) = conversation.split("\n", limit = 2)
             promptResponseList.add(Triple(prompt, response, null))
@@ -201,7 +272,6 @@ fun BakingScreen(
                         clipboardManager.setPrimaryClip(clipData)
                     },
                     onShare = { prompt, response ->
-                        // Implement share functionality
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, "Prompt: $prompt\nResponse: $response")
@@ -213,7 +283,7 @@ fun BakingScreen(
                         bakingViewModel.refreshPrompt(refreshIndex, prompt, image)
                     },
                     user = user,
-                    predefinedConversationsCount = conversations.size // Pass the user object to ContentSection
+                    predefinedConversationsCount = conversations.size
                 )
             }
 
@@ -233,7 +303,6 @@ fun BakingScreen(
                         stopTyping = false
                         isTyping = true
                         bakingViewModel.sendPrompt(selectedImage, prompt)
-                        // Do not reset selectedImage here; it will be reset after the response is added to the list
                     }
                 },
                 onImageSelectClick = { imageLauncher.launch("image/*") },

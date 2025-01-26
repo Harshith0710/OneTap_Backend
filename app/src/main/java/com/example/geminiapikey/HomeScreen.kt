@@ -1,5 +1,6 @@
 package com.example.geminiapikey
 
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -65,23 +67,38 @@ import kotlinx.coroutines.launch
 fun HomeScreen(onActionClick: (String) -> Unit) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current // Use LocalContext instead of LocalView.current.context
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            SidePanel (
+            SidePanel(
                 onClose = { scope.launch { drawerState.close() } }
             )
         }
     ) {
         QuickTapUIScreen(
             onActionClick = onActionClick,
-            onMenuClick = { scope.launch { drawerState.open() } }
+            onMenuClick = { scope.launch { drawerState.open() } },
+            onFunClick = { prompt ->
+                // Navigate to BakingActivity
+                val intent = Intent(context, BakingActivity::class.java).apply {
+                    putExtra("PROMPT", prompt)
+                }
+                context.startActivity(intent)
+            }
         )
     }
 }
 
+
+
 @Composable
-fun QuickTapUIScreen(onActionClick: (String) -> Unit, onMenuClick: () -> Unit) {
+fun QuickTapUIScreen(
+    onActionClick: (String) -> Unit,
+    onMenuClick: () -> Unit,
+    onFunClick: (String) -> Unit
+)  {
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val screenWidth = configuration.screenWidthDp.dp
@@ -199,7 +216,7 @@ Box(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            FunOption()
+            FunOption(onFunClick = onFunClick)
         }
     }
 }
@@ -454,7 +471,7 @@ fun MenuItem2(title: String, image: Int? = null, photoUrl: Uri? = null) {
 }
 
 @Composable
-fun FunOption() {
+fun FunOption(onFunClick: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -471,47 +488,16 @@ fun FunOption() {
         ActionItem(
             title = "Lyrics",
             description = "Generate lyrics of a song for any music genre.",
-            icon = R.drawable.music_notes // Replace with your music icon drawable
+            icon = R.drawable.music_notes,
+            onClick = { onFunClick("Generate lyrics for a song in any music genre.") }
         )
         Spacer(modifier = Modifier.height(8.dp))
         ActionItem(
             title = "Reply Writer",
-            description = "Write an awesome reply to messages, emails and more.",
-            icon = R.drawable.pen_new_square // Replace with your reply icon drawable
+            description = "Write an awesome reply to messages, emails, and more.",
+            icon = R.drawable.pen_new_square,
+            onClick = { onFunClick("Write a professional reply to an email or message.") }
         )
-    }
-}
-
-@Composable
-fun ActionItem(title: String, description: String, icon: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF161B22), shape = RoundedCornerShape(12.dp)) // Card background color
-            .border(1.dp, Color.Gray, shape = RoundedCornerShape(12.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(
-            painter = painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier
-                .size(40.dp)
-                .padding(end = 16.dp)
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = description,
-                color = Color(0xFF9AA0A6), // Description text color
-                fontSize = 16.sp
-            )
-        }
     }
 }
 
@@ -537,5 +523,39 @@ fun ProfilePicture(photoUrl: Uri?) {
                 .padding(8.dp)
                 .clip(CircleShape)
         )
+    }
+}
+
+@Composable
+fun ActionItem(title: String, description: String, icon: Int, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF161B22), shape = RoundedCornerShape(12.dp)) // Card background color
+            .border(1.dp, Color.Gray, shape = RoundedCornerShape(12.dp))
+            .clickable { onClick() } // Make the row clickable
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(end = 16.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = description,
+                color = Color(0xFF9AA0A6), // Description text color
+                fontSize = 16.sp
+            )
+        }
     }
 }

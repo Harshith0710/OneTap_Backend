@@ -16,10 +16,11 @@ class BakingActivity : ComponentActivity() {
 
         // Retrieve the conversations list from the intent
         val conversations = intent.getStringArrayListExtra("conversations") ?: emptyList()
+        val prompt = intent.getStringExtra("PROMPT") ?: ""
 
         setContent {
             // Pass the image bitmap and conversations list to the BakingScreen composable
-            BakingScreen(context = this, image = imageBitmap, conversations = conversations)
+            BakingScreen(context = this, image = imageBitmap, conversations = conversations, prePrompt = prompt)
         }
     }
 }
