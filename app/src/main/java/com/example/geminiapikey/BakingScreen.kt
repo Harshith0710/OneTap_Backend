@@ -11,6 +11,7 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -35,6 +36,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -96,6 +99,8 @@ fun BakingScreen(
 ) {
     var prompt by rememberSaveable { mutableStateOf("") }
     var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
+    var stopTyping by remember { mutableStateOf(false) } // Add stopTyping state
+    var isTyping by remember { mutableStateOf(false) }
     val uiState by bakingViewModel.uiState.collectAsState()
     val promptResponseList = remember { mutableStateListOf<Triple<String, String, Bitmap?>>() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -111,6 +116,30 @@ fun BakingScreen(
             }
         }
     )
+
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is UiState.Success -> {
+                val response = (uiState as UiState.Success).outputText
+                val index = bakingViewModel.currentIndex
+                if (index != null) {
+                    promptResponseList[index] = Triple(
+                        promptResponseList[index].first,
+                        response,
+                        promptResponseList[index].third
+                    )
+                    bakingViewModel.currentIndex = null
+                } else {
+                    promptResponseList.add(Triple(prompt, response, selectedImage))
+                }
+                stopTyping = false // Reset stopTyping after a successful response
+            }
+            is UiState.Error -> {
+                Toast.makeText(context, (uiState as UiState.Error).errorMessage, Toast.LENGTH_SHORT).show()
+            }
+            else -> Unit
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -152,8 +181,28 @@ fun BakingScreen(
                 ContentSection(
                     context = context,
                     uiState = uiState,
-                    promptResponseList = promptResponseList
+                    promptResponseList = promptResponseList,
+                    stopTyping = stopTyping,
+                    onCopy = {
+                        val clipboardManager =
+                            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clipData = ClipData.newPlainText("Copied Text", "")
+                        clipboardManager.setPrimaryClip(clipData)
+                    },
+                    onShare = { prompt, response ->
+                        // Implement share functionality
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "Prompt: $prompt\nResponse: $response")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share via"))
+                    },
+                    onRefresh = { refreshIndex ->
+                        val (prompt, _, image) = promptResponseList[refreshIndex]
+                        bakingViewModel.refreshPrompt(refreshIndex, prompt, image)
+                    },
                 )
+
             }
 
             Spacer(modifier = Modifier.height(120.dp))
@@ -169,13 +218,19 @@ fun BakingScreen(
                 onPromptChange = { prompt = it },
                 onSendClick = {
                     if (prompt.isNotEmpty()) {
+                        stopTyping = false
+                        isTyping = true
                         bakingViewModel.sendPrompt(selectedImage, prompt)
-                        promptResponseList.add(Triple(prompt, "", selectedImage))
-                        prompt = ""
                         selectedImage = null
+                        stopTyping = false
                     }
                 },
-                onImageSelectClick = { imageLauncher.launch("image/*") }
+                onImageSelectClick = { imageLauncher.launch("image/*") },
+                onStopClick = {
+                    stopTyping = true
+                    isTyping = false
+                },
+                isTyping = isTyping
             )
 
             BannerAdView(
@@ -189,66 +244,50 @@ fun BakingScreen(
     }
 }
 
+
 @Composable
 fun ContentSection(
     context: Context,
     uiState: UiState,
-    promptResponseList: MutableList<Triple<String, String, Bitmap?>>
+    promptResponseList: List<Triple<String, String, Bitmap?>>, // Keep this as a parameter
+    onCopy: (String) -> Unit,
+    onShare: (String, String) -> Unit,
+    onRefresh: (Int) -> Unit, // Pass only the index
+    stopTyping: Boolean
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .verticalScroll(rememberScrollState())
     ) {
-        promptResponseList.forEachIndexed { _, triple ->
-            val (currentPrompt, currentResponse, currentImage) = triple
-
+        itemsIndexed(promptResponseList) { index, triple ->
             PromptResponseUnit(
-                prompt = currentPrompt,
-                response = currentResponse,
-                onCopy = {
-                    val clipboardManager =
-                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clipData = ClipData.newPlainText("Copied Text", currentResponse)
-                    clipboardManager.setPrimaryClip(clipData)
-                },
-                onShare = {
-                    val shareText = "$currentPrompt\n\nResponse: $currentResponse"
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                    }
-                    context.startActivity(
-                        Intent.createChooser(shareIntent, "Share Chat")
-                    )
-                },
-                uploadedImage = currentImage
+                prompt = triple.first,
+                response = triple.second,
+                onCopy = { onCopy(triple.second) },
+                onShare = { onShare(triple.first, triple.second) },
+                onRefresh = { onRefresh(index) },
+                uploadedImage = triple.third,
+                stopTyping = stopTyping
             )
-
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        when (uiState) {
-            is UiState.Loading -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        if (uiState is UiState.Loading) {
+            item {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .padding(vertical = 8.dp)
+                )
             }
-
-            is UiState.Success -> {
-                promptResponseList.lastOrNull()?.let {
-                    promptResponseList[promptResponseList.lastIndex] = it.copy(second = uiState.outputText)
-                }
-            }
-
-            is UiState.Error -> {
+        } else if (uiState is UiState.Error) {
+            item {
                 Text(
                     text = uiState.errorMessage,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(16.dp)
                 )
             }
-
-            else -> Unit
         }
     }
 }
@@ -271,7 +310,9 @@ fun PromptResponseUnit(
     response: String,
     onCopy: () -> Unit,
     onShare: () -> Unit,
-    uploadedImage: Bitmap?
+    onRefresh: () -> Unit,
+    uploadedImage: Bitmap?,
+    stopTyping: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -292,7 +333,6 @@ fun PromptResponseUnit(
                 style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
-
         }
         uploadedImage?.let {
             Image(
@@ -338,12 +378,19 @@ fun PromptResponseUnit(
                     contentDescription = "Share",
                     onClick = onShare
                 )
+                // Add the refresh button
+                ActionButton(
+                    icon = R.drawable.icons,  // Assuming you have a refresh icon
+                    contentDescription = "Refresh",
+                    onClick = { onRefresh() }  // Pass the index to the refresh callback
+                )
             }
         }
 
         TypingEffectText(
             fullText = response,
-            typingSpeed = 30L
+            typingSpeed = 30L,
+            stopTyping = stopTyping,
         )
 
         HorizontalDivider(
@@ -371,7 +418,9 @@ fun InputSection(
     prompt: String,
     onPromptChange: (String) -> Unit,
     onSendClick: () -> Unit,
-    onImageSelectClick: () -> Unit
+    onImageSelectClick: () -> Unit,
+    onStopClick: () -> Unit,
+    isTyping: Boolean // Add this flag to toggle the Stop button
 ) {
     Row(
         modifier = Modifier
@@ -419,44 +468,62 @@ fun InputSection(
             )
         }
 
-        IconButton(
-            onClick = onSendClick,
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .size(36.dp)
-        ) {
-            Box(
+        if (isTyping) {
+            IconButton(
+                onClick = onStopClick,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        color = Color(0xFF1E1E1E),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
+                    .padding(end = 8.dp)
+                    .size(36.dp)
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.send_ic),
-                    contentDescription = "Send",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    painter = painterResource(R.drawable.fi_rr_cross_small_1_1),
+                    contentDescription = "Stop Typing",
+                    tint = Color.Red
                 )
+            }
+        } else {
+            IconButton(
+                onClick = onSendClick,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(36.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            color = Color(0xFF1E1E1E),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.send_ic),
+                        contentDescription = "Send",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
 }
 
+
 @Composable
 fun TypingEffectText(
     fullText: String,
-    typingSpeed: Long = 30L
+    typingSpeed: Long = 30L,
+    stopTyping: Boolean
 ) {
     var animatedText by remember { mutableStateOf("") }
 
-    LaunchedEffect(fullText) {
+    LaunchedEffect(fullText, stopTyping) { // Add stopTyping as a dependency
         animatedText = ""
         for (char in fullText) {
             animatedText += char
             delay(typingSpeed)
+            if (stopTyping) break // Stop if stopTyping becomes true
         }
     }
 
@@ -489,8 +556,6 @@ fun TypingEffectText(
         modifier = Modifier.padding(16.dp)
     )
 }
-
-
 
 @Composable
 fun Header(context: Context) {

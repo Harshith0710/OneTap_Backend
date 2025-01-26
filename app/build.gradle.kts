@@ -1,4 +1,5 @@
 plugins {
+    id("com.google.gms.google-services")
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -37,6 +38,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        viewBinding = true
     }
 }
 
@@ -57,6 +59,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.benchmark.common)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.firebase.auth.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -72,5 +75,12 @@ dependencies {
     implementation (libs.androidx.runtime.saveable)
     implementation(libs.accompanist.pager.v0332alpha)
     implementation(libs.accompanist.pager.indicators.v0332alpha)
-    implementation(libs.coil.compose)
+    implementation(libs.coil.compose) // Use BOM for version management
+    implementation(libs.firebase.auth) // Firebase Authentication
+    implementation(libs.firebase.database) // Firebase Realtime Database
+    implementation(libs.firebase.storage) // Firebase Storage
+    implementation(libs.firebase.analytics) // Firebase Analytics
+    implementation(libs.play.services.auth)
+    implementation (platform(libs.firebase.bom.v3223))
+
 }

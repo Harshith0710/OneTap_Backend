@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.geminiapikey" />
+                  <option name="mobileSdkAppId" value="1:705886603160:android:e28ce5f241c1f350b68ded" />
+                  <option name="projectId" value="quicktap-ai" />
+                  <option name="projectNumber" value="705886603160" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

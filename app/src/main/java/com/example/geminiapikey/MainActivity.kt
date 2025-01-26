@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.geminiapikey.ui.theme.GeminiAPIKeyTheme
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,22 +22,28 @@ class MainActivity : ComponentActivity() {
         val isIntroShown = sharedPreferences.getBoolean("isIntroShown", false)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        if (!isIntroShown) {
-            // If intro hasn't been shown, navigate to IntroActivity
-            setContent {
-                var keepSplashScreeOn by remember { mutableStateOf(true) }
-                splashScreen.setKeepOnScreenCondition { keepSplashScreeOn }
-                GeminiAPIKeyTheme {
-                    val context = LocalContext.current
-                    GetStartedScreen(context)
-                    LaunchedEffect(key1 = true){
-                        keepSplashScreeOn = false
+
+        setContent {
+            var keepSplashScreeOn by remember { mutableStateOf(true) }
+            splashScreen.setKeepOnScreenCondition { keepSplashScreeOn }
+            GeminiAPIKeyTheme {
+                val context = LocalContext.current
+
+                LaunchedEffect(key1 = true) {
+                    delay(1000) // Adjust delay as needed
+                    keepSplashScreeOn = false
+
+                    if (!isIntroShown) {
+                        // If intro hasn't been shown, navigate to IntroActivity
+                        context.startActivity(Intent(context, LoginActivity::class.java))
+                    }
+                    else {
+                        // Proceed to main app logic
+                        context.startActivity(Intent(context, LoginActivity::class.java))
+                        finish() // Finish MainActivity
                     }
                 }
             }
-        } else {
-            // Proceed to main app logic
-            startActivity(Intent(this,HomeActivity::class.java))
         }
     }
 }
