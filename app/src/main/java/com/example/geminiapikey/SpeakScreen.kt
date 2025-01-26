@@ -96,11 +96,11 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
     val maxLineLength = 20
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
-    val lineCount = getLineCount(displayedText, maxLineLength)
+    // Store all conversations (prompt and response pairs)
+    val conversations = remember { mutableStateListOf<Pair<String, String>>() }
 
-    val textAlpha by animateFloatAsState(targetValue = 1f - (lineCount * 0.1f).coerceIn(0f, 1f),
-        label = ""
-    )
+    val lineCount = getLineCount(displayedText, maxLineLength)
+    val textAlpha by animateFloatAsState(targetValue = 1f - (lineCount * 0.1f).coerceIn(0f, 1f), label = "")
 
     val tts = remember {
         TextToSpeech(context) { status ->
@@ -185,7 +185,6 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-
             Image(
                 painter = painterResource(R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_1),
                 contentDescription = null,
@@ -247,7 +246,13 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
                         color = Color(96,85,134),
                         shape = CircleShape
                     )
-                    .clickable { context.startActivity(Intent(context, BakingActivity::class.java)) },
+                    .clickable {
+                        // Pass conversations to BakingActivity
+                        val intent = Intent(context, BakingActivity::class.java).apply {
+                            putStringArrayListExtra("conversations", ArrayList(conversations.map { "${it.first}\n${it.second}" }))
+                        }
+                        context.startActivity(intent)
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Image(painter = painterResource(R.drawable.keyboard_10_1), contentDescription = null, modifier = Modifier.size(25.dp))
@@ -287,6 +292,8 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
             LaunchedEffect(state) {
                 amplitude = 0.6f
                 tts.speak(state.outputText, TextToSpeech.QUEUE_FLUSH, null, "utteranceId")
+                // Add the prompt and response to the conversations list
+                conversations.add(spokenText to state.outputText)
             }
         }
         is UiState.Streaming -> {
@@ -301,7 +308,6 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
         else -> {}
     }
 }
-
 @Composable
 fun AnimatedLines(amplitude: Float, isSpeaking: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "")

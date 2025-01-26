@@ -51,9 +51,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,25 +78,39 @@ import androidx.compose.ui.unit.times
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat.getColor
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun BakingScreen(
     context: Context,
     image: Bitmap?,
+    conversations: List<String> = emptyList(), // Add conversations parameter
     bakingViewModel: BakingViewModel = viewModel()
 ) {
     var prompt by rememberSaveable { mutableStateOf("") }
     var selectedImage by remember { mutableStateOf<Bitmap?>(image) }
-    var stopTyping by remember { mutableStateOf(false) } // Add stopTyping state
+    var stopTyping by remember { mutableStateOf(false) }
     var isTyping by remember { mutableStateOf(false) }
     val uiState by bakingViewModel.uiState.collectAsState()
     val promptResponseList = remember { mutableStateListOf<Triple<String, String, Bitmap?>>() }
+    val user: FirebaseUser? = FirebaseAuth.getInstance().currentUser
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     context as? Activity
+
+    // Initialize promptResponseList with conversations
+    LaunchedEffect(conversations) {
+        conversations.forEach { conversation ->
+            val (prompt, response) = conversation.split("\n", limit = 2)
+            promptResponseList.add(Triple(prompt, response, null))
+        }
+    }
 
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -120,12 +136,17 @@ fun BakingScreen(
                     )
                     bakingViewModel.currentIndex = null
                 } else {
+                    // Add the prompt, response, and selectedImage to the list
                     promptResponseList.add(Triple(prompt, response, selectedImage))
+                    selectedImage = null // Reset selectedImage after adding to the list
                 }
-                stopTyping = false // Reset stopTyping after a successful response
+                stopTyping = false
+                isTyping = false // Reset isTyping after response
+                prompt = "" // Clear the prompt text field
             }
             is UiState.Error -> {
                 Toast.makeText(context, (uiState as UiState.Error).errorMessage, Toast.LENGTH_SHORT).show()
+                isTyping = false
             }
             else -> Unit
         }
@@ -191,8 +212,9 @@ fun BakingScreen(
                         val (prompt, _, image) = promptResponseList[refreshIndex]
                         bakingViewModel.refreshPrompt(refreshIndex, prompt, image)
                     },
+                    user = user,
+                    predefinedConversationsCount = conversations.size // Pass the user object to ContentSection
                 )
-
             }
 
             Spacer(modifier = Modifier.height(120.dp))
@@ -211,8 +233,7 @@ fun BakingScreen(
                         stopTyping = false
                         isTyping = true
                         bakingViewModel.sendPrompt(selectedImage, prompt)
-                        selectedImage = null
-                        stopTyping = false
+                        // Do not reset selectedImage here; it will be reset after the response is added to the list
                     }
                 },
                 onImageSelectClick = { imageLauncher.launch("image/*") },
@@ -234,32 +255,47 @@ fun BakingScreen(
     }
 }
 
-
 @Composable
 fun ContentSection(
     context: Context,
     uiState: UiState,
-    promptResponseList: List<Triple<String, String, Bitmap?>>, // Keep this as a parameter
+    promptResponseList: List<Triple<String, String, Bitmap?>>,
     onCopy: (String) -> Unit,
     onShare: (String, String) -> Unit,
-    onRefresh: (Int) -> Unit, // Pass only the index
-    stopTyping: Boolean
+    onRefresh: (Int) -> Unit,
+    stopTyping: Boolean,
+    user: FirebaseUser?, // Add user parameter
+    predefinedConversationsCount: Int // Pass the count of predefined conversations
 ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        itemsIndexed(promptResponseList) { index, triple ->
+        itemsIndexed(
+            items = promptResponseList,
+            key = { index, triple -> "$index-${triple.first.hashCode()}" } // Stable key
+        ) { index, triple ->
+            val isFromConversations = index < predefinedConversationsCount // Check if it's from predefined conversations
+            val shouldShowFullText = rememberSaveable { mutableStateOf(isFromConversations) } // Show full text for predefined conversations
+
             PromptResponseUnit(
                 prompt = triple.first,
                 response = triple.second,
                 onCopy = { onCopy(triple.second) },
                 onShare = { onShare(triple.first, triple.second) },
-                onRefresh = { onRefresh(index) },
+                onRefresh = {
+                    shouldShowFullText.value = false // Reset state on refresh
+                    onRefresh(index)
+                },
                 uploadedImage = triple.third,
-                stopTyping = stopTyping
+                stopTyping = stopTyping,
+                showFullText = shouldShowFullText.value,
+                onShowFullText = { shouldShowFullText.value = true },
+                user = user, // Pass the user object to PromptResponseUnit
+                isFromConversations = isFromConversations // Pass the flag
             )
+
             Spacer(modifier = Modifier.height(8.dp))
         }
 
@@ -302,21 +338,32 @@ fun PromptResponseUnit(
     onShare: () -> Unit,
     onRefresh: () -> Unit,
     uploadedImage: Bitmap?,
-    stopTyping: Boolean
+    stopTyping: Boolean,
+    showFullText: Boolean,
+    onShowFullText: () -> Unit,
+    user: FirebaseUser?, // Add user parameter
+    isFromConversations: Boolean // Add flag to check if it's from conversations
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
     ) {
+        // Display user profile picture and email
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ellipse_78),
-                contentDescription = "Profile Picture",
-                modifier = Modifier.size(36.dp)
-            )
+            user?.photoUrl?.let { photoUrl ->
+                Image(
+                    painter = rememberAsyncImagePainter(photoUrl),
+                    contentDescription = "User Profile Picture",
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = prompt,
                 color = Color.White,
@@ -324,9 +371,12 @@ fun PromptResponseUnit(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
-        uploadedImage?.let {
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        uploadedImage?.let { image ->
             Image(
-                bitmap = it.asImageBitmap(),
+                bitmap = image.asImageBitmap(),
                 contentDescription = "Uploaded Image",
                 modifier = Modifier
                     .height(150.dp)
@@ -348,12 +398,7 @@ fun PromptResponseUnit(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_2),
-                contentDescription = "Profile Picture",
-                modifier = Modifier.size(36.dp)
-            )
-
+            // Action buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -368,20 +413,29 @@ fun PromptResponseUnit(
                     contentDescription = "Share",
                     onClick = onShare
                 )
-                // Add the refresh button
                 ActionButton(
-                    icon = R.drawable.icons,  // Assuming you have a refresh icon
+                    icon = R.drawable.icons8_refresh_50, // Assuming you have a refresh icon
                     contentDescription = "Refresh",
-                    onClick = { onRefresh() }  // Pass the index to the refresh callback
+                    onClick = onRefresh
                 )
             }
         }
 
-        TypingEffectText(
-            fullText = response,
-            typingSpeed = 30L,
-            stopTyping = stopTyping,
-        )
+        // Show response text
+        if (showFullText || isFromConversations) {
+            Text(
+                text = response,
+                style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        } else {
+            TypingEffectText(
+                fullText = response,
+                typingSpeed = 30L,
+                stopTyping = stopTyping,
+                onComplete = onShowFullText
+            )
+        }
 
         HorizontalDivider(
             thickness = 1.dp,
@@ -390,6 +444,7 @@ fun PromptResponseUnit(
         )
     }
 }
+
 
 @Composable
 fun ActionButton(icon: Int, contentDescription: String, onClick: () -> Unit) {
@@ -410,7 +465,7 @@ fun InputSection(
     onSendClick: () -> Unit,
     onImageSelectClick: () -> Unit,
     onStopClick: () -> Unit,
-    isTyping: Boolean // Add this flag to toggle the Stop button
+    isTyping: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -458,42 +513,27 @@ fun InputSection(
             )
         }
 
-        if (isTyping) {
-            IconButton(
-                onClick = onStopClick,
+        IconButton(
+            onClick = onSendClick,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(36.dp)
+        ) {
+            Box(
                 modifier = Modifier
-                    .padding(end = 8.dp)
-                    .size(36.dp)
+                    .fillMaxSize()
+                    .background(
+                        color = Color(0xFF1E1E1E),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.fi_rr_cross_small_1_1),
-                    contentDescription = "Stop Typing",
-                    tint = Color.Red
+                    painter = painterResource(R.drawable.send_ic),
+                    contentDescription = "Send",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
                 )
-            }
-        } else {
-            IconButton(
-                onClick = onSendClick,
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .size(36.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            color = Color(0xFF1E1E1E),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.send_ic),
-                        contentDescription = "Send",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
             }
         }
     }
@@ -503,49 +543,37 @@ fun InputSection(
 @Composable
 fun TypingEffectText(
     fullText: String,
-    typingSpeed: Long = 30L,
-    stopTyping: Boolean
+    typingSpeed: Long = 30L, // Milliseconds between each character
+    stopTyping: Boolean,
+    onComplete: () -> Unit
 ) {
-    var animatedText by remember { mutableStateOf("") }
+    var displayedText by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(fullText, stopTyping) { // Add stopTyping as a dependency
-        animatedText = ""
-        for (char in fullText) {
-            animatedText += char
-            delay(typingSpeed)
-            if (stopTyping) break // Stop if stopTyping becomes true
-        }
-    }
-
-    val annotatedText = buildAnnotatedString {
-        val regex = Regex("\\*\\*(.*?)\\*\\*")
-        var lastIndex = 0
-
-        regex.findAll(animatedText).forEach { matchResult ->
-            val startIndex = matchResult.range.first
-            val endIndex = matchResult.range.last + 1
-
-            append(animatedText.substring(lastIndex, startIndex))
-
-            pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
-            append(matchResult.groupValues[1])
-            pop()
-
-            lastIndex = endIndex
-        }
-
-        if (lastIndex < animatedText.length) {
-            append(animatedText.substring(lastIndex))
+    LaunchedEffect(fullText, stopTyping) {
+        if (stopTyping) {
+            // Immediately show the full text if typing should stop
+            displayedText = fullText
+            onComplete()
+        } else {
+            displayedText = ""
+            coroutineScope.launch {
+                for (i in fullText.indices) {
+                    displayedText = fullText.substring(0, i + 1)
+                    delay(typingSpeed)
+                }
+                onComplete()
+            }
         }
     }
 
     Text(
-        text = annotatedText,
-        color = Color.White,
-        style = TextStyle(fontSize = 16.sp),
-        modifier = Modifier.padding(16.dp)
+        text = displayedText,
+        style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
+        modifier = Modifier.padding(horizontal = 16.dp)
     )
 }
+
 
 @Composable
 fun Header(context: Context) {

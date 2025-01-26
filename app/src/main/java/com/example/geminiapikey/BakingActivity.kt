@@ -11,14 +11,15 @@ class BakingActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Retrieve the image bitmap from the intent
         val imageBitmap = intent.getParcelableExtra<Bitmap>("image")
+
+        // Retrieve the conversations list from the intent
+        val conversations = intent.getStringArrayListExtra("conversations") ?: emptyList()
+
         setContent {
-            if (imageBitmap != null) {
-                BakingScreen(this, imageBitmap)
-            }
-            else{
-                BakingScreen(this, null)
-            }
+            // Pass the image bitmap and conversations list to the BakingScreen composable
+            BakingScreen(context = this, image = imageBitmap, conversations = conversations)
         }
     }
 }
