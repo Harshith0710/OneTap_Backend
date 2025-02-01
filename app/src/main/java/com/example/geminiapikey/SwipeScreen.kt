@@ -178,41 +178,21 @@ fun Tab2Screen() {
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(R.drawable.tab11),
+                painter = painterResource(R.drawable.ellipse_2),
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth(),
                 contentScale = ContentScale.FillWidth
             )
             Image(
-                painter = painterResource(R.drawable.tab_1_2),
+                painter = painterResource(R.drawable.ellipse_3),
                 contentDescription = null,
-                modifier = Modifier.size(250.dp)
+                modifier = Modifier.size(200.dp)
             )
-            Box(
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.group_3),
-                        contentDescription = null,
-                        modifier = Modifier.size(90.dp)
-                    )
-                    Image(
-                        painter = painterResource(R.drawable.group_2),
-                        contentDescription = null,
-                        modifier = Modifier.size(90.dp)
-                    )
-                }
-                Image(
-                    painter = painterResource(R.drawable.group_4),
-                    contentDescription = null,
-                    modifier = Modifier.size(90.dp)
-                )
-            }
+            Image(
+                painter = painterResource(R.drawable.finger),
+                contentDescription = null,
+                modifier = Modifier.size(150.dp)
+            )
         }
 
         // Middle Content
@@ -220,13 +200,13 @@ fun Tab2Screen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Smart Interactions",
+                text = "Privacy First",
                 color = Color.White,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Craft meaningful replies, gain instant insights, and stay productive. QuickTap AI is your personal assistant, always at your fingertips.",
+                text = "Your data stays yours. QuickTap AI operates with a privacy-focused approach, ensuring secure and reliable assistance every time.",
                 color = Color.Gray,
                 modifier = Modifier.padding(20.dp)
             )
@@ -279,21 +259,41 @@ fun Tab3Screen(context: Context, onClick: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(R.drawable.ellipse_2),
+                painter = painterResource(R.drawable.tab11),
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth(),
                 contentScale = ContentScale.FillWidth
             )
             Image(
-                painter = painterResource(R.drawable.ellipse_3),
+                painter = painterResource(R.drawable.tab_1_2),
                 contentDescription = null,
-                modifier = Modifier.size(200.dp)
+                modifier = Modifier.size(250.dp)
             )
-            Image(
-                painter = painterResource(R.drawable.finger),
-                contentDescription = null,
-                modifier = Modifier.size(150.dp)
-            )
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.group_3),
+                        contentDescription = null,
+                        modifier = Modifier.size(90.dp)
+                    )
+                    Image(
+                        painter = painterResource(R.drawable.group_2),
+                        contentDescription = null,
+                        modifier = Modifier.size(90.dp)
+                    )
+                }
+                Image(
+                    painter = painterResource(R.drawable.group_4),
+                    contentDescription = null,
+                    modifier = Modifier.size(90.dp)
+                )
+            }
         }
 
         // Middle Content
@@ -301,13 +301,13 @@ fun Tab3Screen(context: Context, onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Privacy First",
+                text = "Smart Interactions",
                 color = Color.White,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Your data stays yours. QuickTap AI operates with a privacy-focused approach, ensuring secure and reliable assistance every time.",
+                text = "Craft meaningful replies, gain instant insights, and stay productive. QuickTap AI is your personal assistant, always at your fingertips.",
                 color = Color.Gray,
                 modifier = Modifier.padding(20.dp)
             )

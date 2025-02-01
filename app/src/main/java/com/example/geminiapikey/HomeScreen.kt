@@ -106,6 +106,7 @@ fun QuickTapUIScreen(
     val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
     val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
     val user: FirebaseUser? = FirebaseAuth.getInstance().currentUser
+    val name = if(user?.displayName != "") user?.displayName else "User"
 Box(
     Modifier
         .fillMaxSize()
@@ -160,14 +161,13 @@ Box(
             ProfilePicture(photoUrl = user?.photoUrl)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        if (user != null) {
-            Text(
-                text = "Hi, ${user.displayName}",
-                fontSize = 24.sp,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Text(
+            text = "Hi, $name" ,
+            fontSize = 24.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = "How may I help\n you today?",
@@ -319,6 +319,7 @@ fun SidePanel(onClose: () -> Unit) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val sidePanelWidth = screenWidth * 0.75f // 75% of the screen width
     val user: FirebaseUser? = FirebaseAuth.getInstance().currentUser
+    val context = LocalContext.current // Get context for starting the activity
 
     Box(
         modifier = Modifier
@@ -380,7 +381,14 @@ fun SidePanel(onClose: () -> Unit) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { /* Handle click for menu item */ }
+                            .clickable {
+                                // Sign out the user
+                                FirebaseAuth.getInstance().signOut()
+
+                                // Redirect to GetStartedActivity
+                                val intent = Intent(context, GetStartedActivity::class.java)
+                                context.startActivity(intent)
+                            }
                             .padding(vertical = 16.dp, horizontal = 32.dp), // Increased vertical padding
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
@@ -451,7 +459,7 @@ fun MenuItem2(title: String, image: Int? = null, photoUrl: Uri? = null) {
             )
         } else {
             Image(
-                painter = painterResource(image ?: R.drawable.ellipse_78),
+                painter = painterResource(image ?: R.drawable.icons8_test_account_100),
                 contentDescription = null,
                 modifier = Modifier
                     .size(28.dp)
@@ -462,7 +470,7 @@ fun MenuItem2(title: String, image: Int? = null, photoUrl: Uri? = null) {
 
         Spacer(modifier = Modifier.width(20.dp)) // Increased space between icon and text
         Text(
-            text = title,
+            text = if(title != "") title else "User",
             fontSize = 20.sp, // Larger font size for menu items
             fontWeight = FontWeight.Medium,
             color = Color.White
@@ -516,7 +524,7 @@ fun ProfilePicture(photoUrl: Uri?) {
     } else {
         // Fallback in case photoUrl is null
         Image(
-            painter = painterResource(id = R.drawable.ellipse_78),
+            painter = painterResource(id = R.drawable.icons8_test_account_100),
             contentDescription = "Default Profile Picture",
             modifier = Modifier
                 .size(64.dp)

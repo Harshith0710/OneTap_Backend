@@ -1,6 +1,5 @@
 package com.example.geminiapikey
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentResolver
@@ -35,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -43,31 +43,30 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -85,7 +84,6 @@ import com.google.android.gms.ads.AdView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun BakingScreen(
@@ -96,84 +94,31 @@ fun BakingScreen(
     prePrompt: String
 ) {
     var prompt by rememberSaveable { mutableStateOf("") }
-    var selectedImage by remember { mutableStateOf<Bitmap?>(image) }
-    var stopTyping by remember { mutableStateOf(false) }
-    var isTyping by remember { mutableStateOf(false) }
+    var selectedImage by remember { mutableStateOf(image) }
     val uiState by bakingViewModel.uiState.collectAsState()
     val promptResponseList = remember { mutableStateListOf<Triple<String, String, Bitmap?>>() }
     val user: FirebaseUser? = FirebaseAuth.getInstance().currentUser
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    context as? Activity
+    var isSentOrRefreshed by remember { mutableStateOf(false) }
+    val isResponseUpdating = remember { mutableStateOf(false) }
+    var isRefreshDisabled by remember { mutableStateOf(false) }
+    var isStopButtonVisible by remember { mutableStateOf(false) }
+    var isStopButtonEnabled by remember { mutableStateOf(false) }
+    val isLoading = uiState is UiState.Loading
+    val stopTypingMap = remember { mutableStateMapOf<Int, Boolean>() }
+    val displayedTextMap = remember { mutableStateMapOf<Int, String>() }
+    var refreshingIndex by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(image) {
+        if (image != null) {
+            Toast.makeText(context, "Image uploaded successfully!", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Initialize promptResponseList with prePrompt and conversations
     LaunchedEffect(prePrompt, conversations) {
         if (prePrompt.isNotEmpty()) {
-            val prePromptResponse = if(prePrompt[0] == 'G') "(Verse 1)\n" +
-                    "The club isn't the best place to find a lover\n" +
-                    "So the bar is where I spend my nights\n" +
-                    "Drinking whiskey neat and losing all my inhibitions\n" +
-                    "'Cause all I really want is to find a girl\n" +
-                    "Write her in my notebook and never let her go\n" +
-                    "\n" +
-                    "(Pre-Chorus)\n" +
-                    "But then you walked in and my attention suddenly turned\n" +
-                    "My world shifted upside down\n" +
-                    "When you smiled at me, it almost felt like my heart stopped\n" +
-                    "\n" +
-                    "(Chorus)\n" +
-                    "The club isn't the best place to find a lover\n" +
-                    "At least I didn't think so\n" +
-                    "But you were the one I'd been waiting for\n" +
-                    "I don't know where you've been\n" +
-                    "But wherever it's been, it hasn't been with me\n" +
-                    "And after all this time\n" +
-                    "You're back in my life\n" +
-                    "You're back in my life\n" +
-                    "\n" +
-                    "(Verse 2)\n" +
-                    "Drinking from the bottle, neck down, no chaser\n" +
-                    "Feeling kinda lonely, yeah\n" +
-                    "But then you walked in and my attention suddenly turned\n" +
-                    "My world shifted upside down\n" +
-                    "When you smiled at me, it almost felt like my heart stopped\n" +
-                    "\n" +
-                    "(Chorus)\n" +
-                    "The club isn't the best place to find a lover\n" +
-                    "At least I didn't think so\n" +
-                    "But you were the one I'd been waiting for\n" +
-                    "I don't know where you've been\n" +
-                    "But wherever it's been, it hasn't been with me\n" +
-                    "And after all this time\n" +
-                    "You're back in my life\n" +
-                    "You're back in my life\n" +
-                    "\n" +
-                    "(Bridge)\n" +
-                    "Put your records on, ignore the noise\n" +
-                    "It's just another day\n" +
-                    "In paradise\n" +
-                    "On the dancefloor, your eyes meet mine\n" +
-                    "A single touch, and I'm yours\n" +
-                    "\n" +
-                    "(Chorus)\n" +
-                    "The club isn't the best place to find a lover\n" +
-                    "At least I didn't think so\n" +
-                    "But you were the one I'd been waiting for\n" +
-                    "I don't know where you've been\n" +
-                    "But wherever it's been, it hasn't been with me\n" +
-                    "And after all this time\n" +
-                    "You're back in my life\n" +
-                    "You're back in my life\n" +
-                    "\n" +
-                    "(Outro)\n" +
-                    "The club isn't the best place to find a lover\n" +
-                    "But I found you, and I'm never letting go\n" +
-                    "I'm never letting go\n" +
-                    "I'm never letting go\n" +
-                    "I'm never letting go\n" +
-                    "\n" +
-                    "I hope you enjoy these lyrics!" else "\"Thank you for your message/email. I appreciate you taking the time to [state their purpose - e.g., \"reach out,\" \"share your thoughts,\" \"provide an update\"]. I will [state your next action - e.g., \"review this carefully,\" \"consider your suggestions,\" \"respond in more detail shortly\"].\n" +
-                    "\n" +
-                    "In the meantime, please don't hesitate to [offer assistance - e.g., \"contact me if you have any further questions,\" \"let me know if you require anything else\"]." // Replace with actual logic
+            val prePromptResponse = "Response for the prePrompt."
             promptResponseList.add(Triple(prePrompt, prePromptResponse, null))
         }
 
@@ -197,6 +142,9 @@ fun BakingScreen(
     LaunchedEffect(uiState) {
         when (uiState) {
             is UiState.Success -> {
+                isRefreshDisabled = false
+                isStopButtonVisible = false // Reset to "Send" button
+                isStopButtonEnabled = false // Disable "Stop" button
                 val response = (uiState as UiState.Success).outputText
                 val index = bakingViewModel.currentIndex
                 if (index != null) {
@@ -205,19 +153,23 @@ fun BakingScreen(
                         response,
                         promptResponseList[index].third
                     )
+                    displayedTextMap[index] = ""
+                    stopTypingMap[index] = false
                     bakingViewModel.currentIndex = null
-                } else {
-                    // Add the prompt, response, and selectedImage to the list
-                    promptResponseList.add(Triple(prompt, response, selectedImage))
-                    selectedImage = null // Reset selectedImage after adding to the list
                 }
-                stopTyping = false
-                isTyping = false // Reset isTyping after response
-                prompt = "" // Clear the prompt text field
+                else {
+                    promptResponseList.add(Triple(prompt, response, selectedImage))
+                    selectedImage = null
+                }
+                isResponseUpdating.value = false
+                prompt = ""
+                refreshingIndex = null
             }
             is UiState.Error -> {
-                Toast.makeText(context, (uiState as UiState.Error).errorMessage, Toast.LENGTH_SHORT).show()
-                isTyping = false
+                isRefreshDisabled = false
+                isStopButtonVisible = false // Revert to "Send" button on error
+                isStopButtonEnabled = false // Disable "Stop" button
+                isSentOrRefreshed =false
             }
             else -> Unit
         }
@@ -264,11 +216,10 @@ fun BakingScreen(
                     context = context,
                     uiState = uiState,
                     promptResponseList = promptResponseList,
-                    stopTyping = stopTyping,
                     onCopy = {
                         val clipboardManager =
                             context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clipData = ClipData.newPlainText("Copied Text", "")
+                        val clipData = ClipData.newPlainText("Copied Text", it)
                         clipboardManager.setPrimaryClip(clipData)
                     },
                     onShare = { prompt, response ->
@@ -279,11 +230,24 @@ fun BakingScreen(
                         context.startActivity(Intent.createChooser(shareIntent, "Share via"))
                     },
                     onRefresh = { refreshIndex ->
+                        refreshingIndex = refreshIndex
+                        isSentOrRefreshed = true
+                        isResponseUpdating.value = true
                         val (prompt, _, image) = promptResponseList[refreshIndex]
                         bakingViewModel.refreshPrompt(refreshIndex, prompt, image)
                     },
                     user = user,
-                    predefinedConversationsCount = conversations.size
+                    predefinedConversationsCount = conversations.size,
+                    isResponseUpdating = isResponseUpdating,
+                    stopTypingMap = stopTypingMap,
+                    displayedTextMap = displayedTextMap,
+                    onTypingStarted = {
+                        isStopButtonEnabled = true
+                    },
+                    isSentOrRefreshed = isSentOrRefreshed,
+                    onComplete = {
+                        isSentOrRefreshed = false
+                    }
                 )
             }
 
@@ -300,17 +264,32 @@ fun BakingScreen(
                 onPromptChange = { prompt = it },
                 onSendClick = {
                     if (prompt.isNotEmpty()) {
-                        stopTyping = false
-                        isTyping = true
+                        isSentOrRefreshed = true
+                        isStopButtonVisible = true // Show "Stop" button
+                        isStopButtonEnabled = false // Disable "Stop" button during loading
+                        isRefreshDisabled = true // Disable refresh button
                         bakingViewModel.sendPrompt(selectedImage, prompt)
                     }
                 },
                 onImageSelectClick = { imageLauncher.launch("image/*") },
                 onStopClick = {
-                    stopTyping = true
-                    isTyping = false
+                    isSentOrRefreshed = false
+                    isStopButtonVisible = false // Revert to "Send" button
+                    isStopButtonEnabled = false // Disable "Stop" button
+                    isRefreshDisabled = false
+                    val index = refreshingIndex ?: (promptResponseList.size - 1)
+                    val currentDisplayedText = displayedTextMap[index] ?: ""
+                    promptResponseList[index] = Triple(
+                        promptResponseList[index].first,
+                        currentDisplayedText,
+                        promptResponseList[index].third
+                    )
+                    stopTypingMap[index] = true
+                    refreshingIndex = null
                 },
-                isTyping = isTyping
+                isStopButtonEnabled = isStopButtonEnabled,
+                isLoading = isLoading,
+                isSentOrRefreshed = isSentOrRefreshed
             )
 
             BannerAdView(
@@ -332,9 +311,14 @@ fun ContentSection(
     onCopy: (String) -> Unit,
     onShare: (String, String) -> Unit,
     onRefresh: (Int) -> Unit,
-    stopTyping: Boolean,
-    user: FirebaseUser?, // Add user parameter
-    predefinedConversationsCount: Int // Pass the count of predefined conversations
+    user: FirebaseUser?,
+    predefinedConversationsCount: Int,
+    isResponseUpdating: MutableState<Boolean>,
+    stopTypingMap: SnapshotStateMap<Int, Boolean>,
+    displayedTextMap: SnapshotStateMap<Int, String>,
+    onTypingStarted: () -> Unit,
+    isSentOrRefreshed: Boolean,
+    onComplete: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -343,10 +327,10 @@ fun ContentSection(
     ) {
         itemsIndexed(
             items = promptResponseList,
-            key = { index, triple -> "$index-${triple.first.hashCode()}" } // Stable key
+            key = { index, triple -> "$index-${triple.first.hashCode()}" }
         ) { index, triple ->
-            val isFromConversations = index < predefinedConversationsCount // Check if it's from predefined conversations
-            val shouldShowFullText = rememberSaveable { mutableStateOf(isFromConversations) } // Show full text for predefined conversations
+            val isFromConversations = index < predefinedConversationsCount
+            val shouldShowFullText = rememberSaveable { mutableStateOf(isFromConversations) }
 
             PromptResponseUnit(
                 prompt = triple.first,
@@ -354,15 +338,23 @@ fun ContentSection(
                 onCopy = { onCopy(triple.second) },
                 onShare = { onShare(triple.first, triple.second) },
                 onRefresh = {
-                    shouldShowFullText.value = false // Reset state on refresh
+                    shouldShowFullText.value = false
                     onRefresh(index)
                 },
                 uploadedImage = triple.third,
-                stopTyping = stopTyping,
                 showFullText = shouldShowFullText.value,
-                onShowFullText = { shouldShowFullText.value = true },
-                user = user, // Pass the user object to PromptResponseUnit
-                isFromConversations = isFromConversations // Pass the flag
+                onShowFullText = {
+                    shouldShowFullText.value = true
+                    onComplete()
+                },
+                user = user,
+                isFromConversations = isFromConversations,
+                isResponseUpdating = isResponseUpdating,
+                stopTyping = stopTypingMap[index] ?: false,
+                displayedText = displayedTextMap[index] ?: "",
+                onDisplayedTextUpdate = { newText -> displayedTextMap[index] = newText },
+                onTypingStarted = onTypingStarted,
+                isSentOrRefreshed = isSentOrRefreshed
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -370,34 +362,57 @@ fun ContentSection(
 
         if (uiState is UiState.Loading) {
             item {
-                CircularProgressIndicator(
+                Box(
                     modifier = Modifier
-                        .padding(vertical = 8.dp)
-                )
+                        .fillMaxWidth()
+                        .wrapContentSize(Alignment.Center)
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-        } else if (uiState is UiState.Error) {
+        }
+        else if (uiState is UiState.Error) {
             item {
-                Text(
-                    text = uiState.errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp)
-                )
+                Toast.makeText(context, "An error occurred", Toast.LENGTH_SHORT).show()
             }
         }
     }
 }
 
+@Composable
+fun TypingEffectText(
+    fullText: String,
+    typingSpeed: Long = 30L,
+    onComplete: () -> Unit,
+    stopTyping: Boolean,
+    displayedText: String,
+    onDisplayedTextUpdate: (String) -> Unit,
+    onTypingStarted: () -> Unit // Add this callback
+) {
+    LaunchedEffect(fullText, stopTyping) {
+        if (stopTyping) {
+            // If stopTyping is true, exit without updating the displayed text
+            return@LaunchedEffect
+        }
 
-fun getBitmapFromUri(contentResolver: ContentResolver, uri: Uri): Bitmap? {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        val source = ImageDecoder.createSource(contentResolver, uri)
-        ImageDecoder.decodeBitmap(source)
+        // Notify that typing has started
+        onTypingStarted()
+
+        // Reset displayedText when fullText changes
+        onDisplayedTextUpdate("")
+        for (i in fullText.indices) {
+            onDisplayedTextUpdate(fullText.substring(0, i + 1))
+            delay(typingSpeed)
+        }
+        onComplete()
     }
-    else {
-        MediaStore.Images.Media.getBitmap(contentResolver, uri)
-    }
+
+    Text(
+        text = displayedText,
+        style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
+        modifier = Modifier.padding(horizontal = 16.dp)
+    )
 }
-
 
 @Composable
 fun PromptResponseUnit(
@@ -407,11 +422,16 @@ fun PromptResponseUnit(
     onShare: () -> Unit,
     onRefresh: () -> Unit,
     uploadedImage: Bitmap?,
-    stopTyping: Boolean,
     showFullText: Boolean,
     onShowFullText: () -> Unit,
-    user: FirebaseUser?, // Add user parameter
-    isFromConversations: Boolean // Add flag to check if it's from conversations
+    user: FirebaseUser?,
+    isFromConversations: Boolean,
+    isResponseUpdating: MutableState<Boolean>,
+    stopTyping: Boolean,
+    displayedText: String,
+    onDisplayedTextUpdate: (String) -> Unit,
+    onTypingStarted: () -> Unit,
+    isSentOrRefreshed: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -436,7 +456,7 @@ fun PromptResponseUnit(
             Text(
                 text = prompt,
                 color = Color.White,
-                style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
+                style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Medium),
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
@@ -467,7 +487,6 @@ fun PromptResponseUnit(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Action buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -475,23 +494,25 @@ fun PromptResponseUnit(
                 ActionButton(
                     icon = R.drawable.icon_copy__component_additional_icons,
                     contentDescription = "Copy",
-                    onClick = onCopy
+                    onClick = onCopy,
+                    isSentOrRefreshed = true
                 )
                 ActionButton(
                     icon = R.drawable.icon_share_alt__component_additional_icons,
                     contentDescription = "Share",
-                    onClick = onShare
+                    onClick = onShare,
+                    isSentOrRefreshed = true
                 )
                 ActionButton(
-                    icon = R.drawable.icons8_refresh_50, // Assuming you have a refresh icon
+                    icon = R.drawable.icons8_refresh_50,
                     contentDescription = "Refresh",
-                    onClick = onRefresh
+                    onClick = onRefresh,
+                    isSentOrRefreshed = isSentOrRefreshed
                 )
             }
         }
 
-        // Show response text
-        if (showFullText || isFromConversations) {
+        if (showFullText || isFromConversations || isResponseUpdating.value) {
             Text(
                 text = response,
                 style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
@@ -501,8 +522,11 @@ fun PromptResponseUnit(
             TypingEffectText(
                 fullText = response,
                 typingSpeed = 30L,
+                onComplete = onShowFullText,
                 stopTyping = stopTyping,
-                onComplete = onShowFullText
+                displayedText = displayedText,
+                onDisplayedTextUpdate = onDisplayedTextUpdate,
+                onTypingStarted = onTypingStarted // Pass the callback
             )
         }
 
@@ -514,19 +538,6 @@ fun PromptResponseUnit(
     }
 }
 
-
-@Composable
-fun ActionButton(icon: Int, contentDescription: String, onClick: () -> Unit) {
-    Image(
-        painter = painterResource(icon),
-        contentDescription = contentDescription,
-        modifier = Modifier
-            .clickable { onClick() }
-            .padding(8.dp)
-            .requiredSize(16.dp)
-    )
-}
-
 @Composable
 fun InputSection(
     prompt: String,
@@ -534,7 +545,9 @@ fun InputSection(
     onSendClick: () -> Unit,
     onImageSelectClick: () -> Unit,
     onStopClick: () -> Unit,
-    isTyping: Boolean
+    isStopButtonEnabled: Boolean,
+    isLoading: Boolean,
+    isSentOrRefreshed: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -582,20 +595,31 @@ fun InputSection(
             )
         }
 
-        IconButton(
-            onClick = onSendClick,
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .size(36.dp)
-        ) {
-            Box(
+        if (isSentOrRefreshed) {
+            IconButton(
+                onClick = {
+                    if (!isLoading) {
+                        onStopClick() // Invoke the onStopClick lambda
+                    }
+                },
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        color = Color(0xFF1E1E1E),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
+                    .padding(end = 8.dp)
+                    .size(36.dp)
+                    .alpha(if (isStopButtonEnabled) 1f else 0.5f) // Reduce opacity if disabled
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.icons8_stop_50), // Stop icon
+                    contentDescription = "Stop",
+                    tint = Color.White
+                )
+            }
+        }
+        else {
+            IconButton(
+                onClick = onSendClick,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(36.dp)
             ) {
                 Icon(
                     painter = painterResource(R.drawable.send_ic),
@@ -608,41 +632,31 @@ fun InputSection(
     }
 }
 
-
 @Composable
-fun TypingEffectText(
-    fullText: String,
-    typingSpeed: Long = 30L, // Milliseconds between each character
-    stopTyping: Boolean,
-    onComplete: () -> Unit
-) {
-    var displayedText by remember { mutableStateOf("") }
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(fullText, stopTyping) {
-        if (stopTyping) {
-            // Immediately show the full text if typing should stop
-            displayedText = fullText
-            onComplete()
-        } else {
-            displayedText = ""
-            coroutineScope.launch {
-                for (i in fullText.indices) {
-                    displayedText = fullText.substring(0, i + 1)
-                    delay(typingSpeed)
-                }
-                onComplete()
+fun BannerAdView(context: Context, modifier: Modifier, adUnitIdValue: String) {
+    AndroidView(
+        factory = {
+            AdView(context).apply {
+                setAdSize(AdSize.BANNER)
+                adUnitId = adUnitIdValue
+                loadAd(
+                    AdRequest.Builder().build()
+                )
             }
-        }
-    }
-
-    Text(
-        text = displayedText,
-        style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
-        modifier = Modifier.padding(horizontal = 16.dp)
+        },
+        modifier = modifier
     )
 }
 
+fun getBitmapFromUri(contentResolver: ContentResolver, uri: Uri): Bitmap? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val source = ImageDecoder.createSource(contentResolver, uri)
+        ImageDecoder.decodeBitmap(source)
+    }
+    else {
+        MediaStore.Images.Media.getBitmap(contentResolver, uri)
+    }
+}
 
 @Composable
 fun Header(context: Context) {
@@ -674,17 +688,18 @@ fun Header(context: Context) {
 }
 
 @Composable
-fun BannerAdView(context: Context, modifier: Modifier, adUnitIdValue: String) {
-    AndroidView(
-        factory = {
-            AdView(context).apply {
-                setAdSize(AdSize.BANNER)
-                adUnitId = adUnitIdValue
-                loadAd(
-                    AdRequest.Builder().build()
-                )
-            }
-        },
-        modifier = modifier
+fun ActionButton(
+    icon: Int,
+    contentDescription: String,
+    onClick: () -> Unit, // Add this parameter
+    isSentOrRefreshed: Boolean
+) {
+    Image(
+        painter = painterResource(icon),
+        contentDescription = contentDescription,
+        modifier = Modifier
+            .clickable { if(!isSentOrRefreshed) onClick() } // Use the enabled state
+            .padding(8.dp)
+            .requiredSize(16.dp)
     )
 }
