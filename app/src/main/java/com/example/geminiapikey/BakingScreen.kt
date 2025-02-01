@@ -115,11 +115,11 @@ fun BakingScreen(
         }
     }
 
-    // Initialize promptResponseList with prePrompt and conversations
     LaunchedEffect(prePrompt, conversations) {
         if (prePrompt.isNotEmpty()) {
-            val prePromptResponse = "Response for the prePrompt."
-            promptResponseList.add(Triple(prePrompt, prePromptResponse, null))
+            promptResponseList.add(Triple(prePrompt, "", null))
+            bakingViewModel.currentIndex = 0
+            bakingViewModel.sendPrompt(null, prePrompt)
         }
 
         conversations.forEach { conversation ->
@@ -439,13 +439,23 @@ fun PromptResponseUnit(
             .padding(vertical = 8.dp)
     ) {
         // Display user profile picture and email
+        val photoUrl = user?.photoUrl
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            user?.photoUrl?.let { photoUrl ->
+            if (photoUrl != null) {
                 Image(
                     painter = rememberAsyncImagePainter(photoUrl),
-                    contentDescription = "User Profile Picture",
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape) // Ensure it's circular
+                )
+            } else {
+                // Fallback in case photoUrl is null
+                Image(
+                    painter = painterResource(id = R.drawable.icons8_test_account_100),
+                    contentDescription = "Default Profile Picture",
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
