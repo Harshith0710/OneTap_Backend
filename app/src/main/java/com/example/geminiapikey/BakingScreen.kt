@@ -66,11 +66,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -387,11 +390,10 @@ fun TypingEffectText(
     stopTyping: Boolean,
     displayedText: String,
     onDisplayedTextUpdate: (String) -> Unit,
-    onTypingStarted: () -> Unit // Add this callback
+    onTypingStarted: () -> Unit
 ) {
     LaunchedEffect(fullText, stopTyping) {
         if (stopTyping) {
-            // If stopTyping is true, exit without updating the displayed text
             return@LaunchedEffect
         }
 
@@ -407,8 +409,33 @@ fun TypingEffectText(
         onComplete()
     }
 
+    // Process the displayedText to replace **Heading** with bold text
+    val annotatedString = buildAnnotatedString {
+        val regex = Regex("\\*\\*(.*?)\\*\\*") // Regex to match **Heading**
+        var currentIndex = 0
+
+        // Find all matches of **Heading**
+        regex.findAll(displayedText).forEach { matchResult ->
+            // Append text before the match
+            append(displayedText.substring(currentIndex, matchResult.range.first))
+
+            // Append the bold text (without asterisks)
+            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(matchResult.groupValues[1]) // Group 1 is the text inside **
+            }
+
+            // Update currentIndex to the end of the match
+            currentIndex = matchResult.range.last + 1
+        }
+
+        // Append remaining text after the last match
+        if (currentIndex < displayedText.length) {
+            append(displayedText.substring(currentIndex))
+        }
+    }
+
     Text(
-        text = displayedText,
+        text = annotatedString,
         style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
         modifier = Modifier.padding(horizontal = 16.dp)
     )
@@ -523,12 +550,32 @@ fun PromptResponseUnit(
         }
 
         if (showFullText || isFromConversations || isResponseUpdating.value) {
+            // Display the full text with bold formatting
+            val annotatedString = buildAnnotatedString {
+                val regex = Regex("\\*\\*(.*?)\\*\\*")
+                var currentIndex = 0
+
+                regex.findAll(response).forEach { matchResult ->
+                    append(response.substring(currentIndex, matchResult.range.first))
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(matchResult.groupValues[1])
+                    }
+                    currentIndex = matchResult.range.last + 1
+                }
+
+                if (currentIndex < response.length) {
+                    append(response.substring(currentIndex))
+                }
+            }
+
             Text(
-                text = response,
+                text = annotatedString,
                 style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
-        } else {
+        }
+        else {
+            // Use TypingEffectText for the typing effect
             TypingEffectText(
                 fullText = response,
                 typingSpeed = 30L,
@@ -536,7 +583,7 @@ fun PromptResponseUnit(
                 stopTyping = stopTyping,
                 displayedText = displayedText,
                 onDisplayedTextUpdate = onDisplayedTextUpdate,
-                onTypingStarted = onTypingStarted // Pass the callback
+                onTypingStarted = onTypingStarted
             )
         }
 
