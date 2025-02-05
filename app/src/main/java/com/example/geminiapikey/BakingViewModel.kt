@@ -23,8 +23,8 @@ class BakingViewModel : ViewModel() {
 
     // Hardcoded predefined conversation history
     private val predefinedHistory = listOf(
-        "User: From now on, I refer to you as KIRA. Do not include your name in each response, just say it when i ask you",
-        "AI: Okay I understand. I will be your KIRA and be friendly."
+        "From now on, I refer to you as KIRA. Do not include your name in each response, just say it when i ask you",
+        "Okay I understand. I will be your KIRA and be friendly."
     )
 
     // Stores conversation history (Mutable)

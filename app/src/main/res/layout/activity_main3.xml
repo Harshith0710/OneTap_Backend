@@ -26,6 +26,35 @@
         android:textStyle="bold"
         android:layout_marginTop="20dp" />
 
+    <!-- Name Label -->
+    <TextView
+        android:id="@+id/name_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Full Name"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp" />
+
+    <!-- Name Input -->
+    <EditText
+        android:id="@+id/name_input"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:hint="Enter your full name"
+        android:textSize="14dp"
+        android:textColorHint="#A6A6A6"
+        android:background="@drawable/edittext_background"
+        android:textColor="#FFFFFF"
+        android:drawableStart="@drawable/ic_user"
+        android:drawablePadding="8dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="8dp"
+        android:importantForAccessibility="yes" />
+
     <!-- Email Label -->
     <TextView
         android:id="@+id/email_label"
@@ -34,7 +63,7 @@
         android:text="Email Address"
         android:textColor="#FFFFFF"
         android:textSize="16sp"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp" />
 
@@ -166,6 +195,7 @@
             android:src="@drawable/ic_error" />
 
         <TextView
+            android:id="@+id/texterror"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"

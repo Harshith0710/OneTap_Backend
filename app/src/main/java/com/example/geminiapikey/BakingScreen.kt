@@ -16,10 +16,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -36,9 +38,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,6 +59,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,8 +74,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -74,7 +88,10 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.viewinterop.AndroidView
@@ -87,6 +104,10 @@ import com.google.android.gms.ads.AdView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
+import kotlin.text.first
+import kotlin.text.firstOrNull
+import kotlin.text.isNotEmpty
+import kotlin.text.split
 
 @Composable
 fun BakingScreen(
@@ -392,15 +413,14 @@ fun TypingEffectText(
     onDisplayedTextUpdate: (String) -> Unit,
     onTypingStarted: () -> Unit
 ) {
+    val context = LocalContext.current
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+
+    // Start the typing effect
     LaunchedEffect(fullText, stopTyping) {
-        if (stopTyping) {
-            return@LaunchedEffect
-        }
+        if (stopTyping) return@LaunchedEffect
 
-        // Notify that typing has started
         onTypingStarted()
-
-        // Reset displayedText when fullText changes
         onDisplayedTextUpdate("")
         for (i in fullText.indices) {
             onDisplayedTextUpdate(fullText.substring(0, i + 1))
@@ -409,36 +429,107 @@ fun TypingEffectText(
         onComplete()
     }
 
-    // Process the displayedText to replace **Heading** with bold text
+    // Regex for bold text and code blocks
+    val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
+    val codeRegex = Regex("```(.*?)\\n([\\s\\S]*?)```", RegexOption.DOT_MATCHES_ALL)
+
+    var currentIndex = 0
+    val matches = (boldRegex.findAll(displayedText) + codeRegex.findAll(displayedText)).sortedBy { it.range.first }
+    val inlineContentMap = mutableMapOf<String, InlineTextContent>()
+
     val annotatedString = buildAnnotatedString {
-        val regex = Regex("\\*\\*(.*?)\\*\\*") // Regex to match **Heading**
-        var currentIndex = 0
+        matches.forEach { matchResult ->
+            val textBefore = displayedText.substring(currentIndex, matchResult.range.first)
+            append(textBefore)
 
-        // Find all matches of **Heading**
-        regex.findAll(displayedText).forEach { matchResult ->
-            // Append text before the match
-            append(displayedText.substring(currentIndex, matchResult.range.first))
+            when {
+                codeRegex.matches(matchResult.value) -> { // Code block
+                    val language = matchResult.groupValues[1].trim()
+                    val code = matchResult.groupValues[2].trim()
+                    val placeholder = "CODE_BLOCK_${matchResult.range.first}"  // Ensure unique key
+                    appendInlineContent(placeholder, "[CODE BLOCK]")  // Reference the placeholder
 
-            // Append the bold text (without asterisks)
-            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                append(matchResult.groupValues[1]) // Group 1 is the text inside **
+                    // Estimate the height based on the number of lines in the code
+                    val estimatedHeight = (code.lines().size + 1) * 20.sp  // Adjust line height based on the number of lines
+
+                    // Store the inline content for this code block
+                    inlineContentMap[placeholder] = InlineTextContent(
+                        Placeholder(
+                            width = (screenWidth * 0.8).sp,  // Use TextUnit.Infinity to take up maximum space
+                            height = estimatedHeight,
+                            placeholderVerticalAlign = PlaceholderVerticalAlign.TextTop
+                        )
+                    ) {
+                        CodeBlock(language, code) {
+                            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipData = ClipData.newPlainText("Code", code)
+                            clipboardManager.setPrimaryClip(clipData)
+                            Toast.makeText(context, "Code copied!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                boldRegex.matches(matchResult.value) -> { // Bold text
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(matchResult.groupValues[1])
+                    }
+                }
             }
-
-            // Update currentIndex to the end of the match
             currentIndex = matchResult.range.last + 1
         }
 
-        // Append remaining text after the last match
         if (currentIndex < displayedText.length) {
             append(displayedText.substring(currentIndex))
         }
     }
 
-    Text(
+    BasicText(
         text = annotatedString,
         style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
+        inlineContent = inlineContentMap,  // Pass the inline content map here
         modifier = Modifier.padding(horizontal = 16.dp)
     )
+}
+
+
+
+@Composable
+fun CodeBlock(language: String, code: String, onCopy: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, RoundedCornerShape(8.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = language.ifEmpty { "Code" },
+                style = TextStyle(fontSize = 14.sp, color = Color.Black),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            IconButton(
+                onClick = { onCopy() },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.icon_copy__component_additional_icons),
+                    contentDescription = "Copy Code",
+                    tint = Color.Black,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        Text(
+            text = code,
+            style = TextStyle(fontSize = 14.sp, color = Color.Black),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable
@@ -465,30 +556,18 @@ fun PromptResponseUnit(
             .fillMaxWidth()
             .padding(vertical = 8.dp)
     ) {
-        // Display user profile picture and email
-        val photoUrl = user?.photoUrl
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (photoUrl != null) {
-                Image(
-                    painter = rememberAsyncImagePainter(photoUrl),
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape) // Ensure it's circular
-                )
-            } else {
-                // Fallback in case photoUrl is null
-                Image(
-                    painter = painterResource(id = R.drawable.icons8_test_account_100),
-                    contentDescription = "Default Profile Picture",
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                )
-            }
-
+        val context = LocalContext.current
+        val screenWidth = LocalConfiguration.current.screenWidthDp
+        // Profile and prompt section
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = if (user?.photoUrl != null) rememberAsyncImagePainter(user.photoUrl)
+                else painterResource(id = R.drawable.icons8_test_account_100),
+                contentDescription = "Profile Picture",
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = prompt,
@@ -500,6 +579,7 @@ fun PromptResponseUnit(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Uploaded image
         uploadedImage?.let { image ->
             Image(
                 bitmap = image.asImageBitmap(),
@@ -517,6 +597,7 @@ fun PromptResponseUnit(
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
+        // Action buttons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -524,58 +605,79 @@ fun PromptResponseUnit(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ActionButton(
-                    icon = R.drawable.icon_copy__component_additional_icons,
-                    contentDescription = "Copy",
-                    onClick = onCopy,
-                    isSentOrRefreshed = true
-                )
-                ActionButton(
-                    icon = R.drawable.icon_share_alt__component_additional_icons,
-                    contentDescription = "Share",
-                    onClick = onShare,
-                    isSentOrRefreshed = true
-                )
-                ActionButton(
-                    icon = R.drawable.icons8_refresh_50,
-                    contentDescription = "Refresh",
-                    onClick = onRefresh,
-                    isSentOrRefreshed = isSentOrRefreshed
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                ActionButton(icon = R.drawable.icon_copy__component_additional_icons, contentDescription = "Copy", onClick = onCopy, isSentOrRefreshed = true)
+                ActionButton(icon = R.drawable.icon_share_alt__component_additional_icons, contentDescription = "Share", onClick = onShare, isSentOrRefreshed = true)
+                ActionButton(icon = R.drawable.icons8_refresh_50, contentDescription = "Refresh", onClick = onRefresh, isSentOrRefreshed = isSentOrRefreshed)
             }
         }
 
+        // Response text
         if (showFullText || isFromConversations || isResponseUpdating.value) {
-            // Display the full text with bold formatting
-            val annotatedString = buildAnnotatedString {
-                val regex = Regex("\\*\\*(.*?)\\*\\*")
-                var currentIndex = 0
+            // Regex for bold text and code blocks
+            val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
+            val codeRegex = Regex("```(.*?)\\n([\\s\\S]*?)```", RegexOption.DOT_MATCHES_ALL)
 
-                regex.findAll(response).forEach { matchResult ->
-                    append(response.substring(currentIndex, matchResult.range.first))
-                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(matchResult.groupValues[1])
+            var currentIndex = 0
+            val matches = (boldRegex.findAll(response) + codeRegex.findAll(response)).sortedBy { it.range.first }
+            val inlineContentMap = mutableMapOf<String, InlineTextContent>()
+
+            // Build the annotated string with inline content for code blocks
+            val annotatedString = buildAnnotatedString {
+                matches.forEach { matchResult ->
+                    // Add text before the match
+                    val textBefore = response.substring(currentIndex, matchResult.range.first)
+                    append(textBefore)
+
+                    when {
+                        // Code block match
+                        codeRegex.matches(matchResult.value) -> {
+                            val language = matchResult.groupValues[1].trim()
+                            val code = matchResult.groupValues[2].trim()
+                            val placeholder = "CODE_BLOCK_${matchResult.range.first}"  // Ensure unique key
+                            appendInlineContent(placeholder, "[CODE BLOCK]")
+                            val estimatedHeight = (code.lines().size + 1) * 20.sp
+                            // Store the inline content for this code block
+                            inlineContentMap[placeholder] = InlineTextContent(
+                                Placeholder(
+                                    width = (screenWidth * 0.8).sp,  // Use TextUnit.Sp(1000) for the width if needed
+                                    height = estimatedHeight,  // Adjust line height based on the number of lines
+                                    placeholderVerticalAlign = PlaceholderVerticalAlign.TextTop
+                                )
+                            ) {
+                                CodeBlock(language, code) {
+                                    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clipData = ClipData.newPlainText("Code", code)
+                                    clipboardManager.setPrimaryClip(clipData)
+                                    Toast.makeText(context, "Code copied!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                        // Bold text match
+                        boldRegex.matches(matchResult.value) -> {
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                append(matchResult.groupValues[1])
+                            }
+                        }
                     }
+
                     currentIndex = matchResult.range.last + 1
                 }
 
+                // Add remaining text
                 if (currentIndex < response.length) {
                     append(response.substring(currentIndex))
                 }
             }
 
-            Text(
+            // Render the annotated text with inline content
+            BasicText(
                 text = annotatedString,
                 style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
+                inlineContent = inlineContentMap,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
-        }
-        else {
-            // Use TypingEffectText for the typing effect
+        } else {
             TypingEffectText(
                 fullText = response,
                 typingSpeed = 30L,
@@ -594,7 +696,6 @@ fun PromptResponseUnit(
         )
     }
 }
-
 @Composable
 fun InputSection(
     prompt: String,
@@ -755,7 +856,7 @@ fun ActionButton(
         painter = painterResource(icon),
         contentDescription = contentDescription,
         modifier = Modifier
-            .clickable { if(!isSentOrRefreshed) onClick() } // Use the enabled state
+            .clickable { if (!isSentOrRefreshed) onClick() } // Use the enabled state
             .padding(8.dp)
             .requiredSize(16.dp)
     )
