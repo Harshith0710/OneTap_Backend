@@ -395,11 +395,6 @@ fun ContentSection(
                 }
             }
         }
-        else if (uiState is UiState.Error) {
-            item {
-                Toast.makeText(context, "An error occurred", Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 }
 
@@ -450,7 +445,7 @@ fun TypingEffectText(
                     appendInlineContent(placeholder, "[CODE BLOCK]")  // Reference the placeholder
 
                     // Estimate the height based on the number of lines in the code
-                    val estimatedHeight = (code.lines().size + 1) * 20.sp  // Adjust line height based on the number of lines
+                    val estimatedHeight = (code.lines().size + 1) * 21.sp  // Adjust line height based on the number of lines
 
                     // Store the inline content for this code block
                     inlineContentMap[placeholder] = InlineTextContent(
@@ -636,7 +631,7 @@ fun PromptResponseUnit(
                             val code = matchResult.groupValues[2].trim()
                             val placeholder = "CODE_BLOCK_${matchResult.range.first}"  // Ensure unique key
                             appendInlineContent(placeholder, "[CODE BLOCK]")
-                            val estimatedHeight = (code.lines().size + 1) * 20.sp
+                            val estimatedHeight = (code.lines().size + 1) * 21.sp
                             // Store the inline content for this code block
                             inlineContentMap[placeholder] = InlineTextContent(
                                 Placeholder(
