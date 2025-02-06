@@ -16,12 +16,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -38,15 +36,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -59,7 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -76,11 +71,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -88,10 +81,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.viewinterop.AndroidView
@@ -104,10 +94,6 @@ import com.google.android.gms.ads.AdView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
-import kotlin.text.first
-import kotlin.text.firstOrNull
-import kotlin.text.isNotEmpty
-import kotlin.text.split
 
 @Composable
 fun BakingScreen(
@@ -237,7 +223,6 @@ fun BakingScreen(
                     .fillMaxWidth()
             ) {
                 ContentSection(
-                    context = context,
                     uiState = uiState,
                     promptResponseList = promptResponseList,
                     onCopy = {
@@ -329,7 +314,6 @@ fun BakingScreen(
 
 @Composable
 fun ContentSection(
-    context: Context,
     uiState: UiState,
     promptResponseList: List<Triple<String, String, Bitmap?>>,
     onCopy: (String) -> Unit,
@@ -357,6 +341,7 @@ fun ContentSection(
             val shouldShowFullText = rememberSaveable { mutableStateOf(isFromConversations) }
 
             PromptResponseUnit(
+                index = index,
                 prompt = triple.first,
                 response = triple.second,
                 onCopy = { onCopy(triple.second) },
@@ -406,21 +391,27 @@ fun TypingEffectText(
     stopTyping: Boolean,
     displayedText: String,
     onDisplayedTextUpdate: (String) -> Unit,
-    onTypingStarted: () -> Unit
+    onTypingStarted: () -> Unit,
+    index: Int
 ) {
     val context = LocalContext.current
     val screenWidth = LocalConfiguration.current.screenWidthDp
+    var isCompleted by remember { mutableStateOf(false) }
+    val typingKey = remember { mutableIntStateOf(index) }
 
     // Start the typing effect
-    LaunchedEffect(fullText, stopTyping) {
-        if (stopTyping) return@LaunchedEffect
+    LaunchedEffect(typingKey.intValue, stopTyping) {
+        if (stopTyping || isCompleted) return@LaunchedEffect
 
         onTypingStarted()
-        onDisplayedTextUpdate("")
-        for (i in fullText.indices) {
+        if (displayedText.isEmpty()) {
+            onDisplayedTextUpdate("")
+        }
+        for (i in displayedText.length until fullText.length) {
             onDisplayedTextUpdate(fullText.substring(0, i + 1))
             delay(typingSpeed)
         }
+        isCompleted = true
         onComplete()
     }
 
@@ -529,6 +520,7 @@ fun CodeBlock(language: String, code: String, onCopy: () -> Unit) {
 
 @Composable
 fun PromptResponseUnit(
+    index: Int,
     prompt: String,
     response: String,
     onCopy: () -> Unit,
@@ -680,7 +672,8 @@ fun PromptResponseUnit(
                 stopTyping = stopTyping,
                 displayedText = displayedText,
                 onDisplayedTextUpdate = onDisplayedTextUpdate,
-                onTypingStarted = onTypingStarted
+                onTypingStarted = onTypingStarted,
+                index = index
             )
         }
 
