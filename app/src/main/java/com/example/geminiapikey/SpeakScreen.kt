@@ -87,7 +87,7 @@ fun getLineCount(text: String, maxLineLength: Int): Int = if (text.isEmpty()) 0 
 fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
     val context = LocalContext.current
     var spokenText by remember { mutableStateOf("") }
-    var displayedText by remember { mutableStateOf("I’m having anxiety about my career, can you help me dealing with it ? ") }
+    var displayedText by remember { mutableStateOf("Hey, How can I help you? ") }
     var partialText by remember { mutableStateOf("") }
     var isListening by remember { mutableStateOf(false) }
     var amplitude by remember { mutableFloatStateOf(0.1f) }
@@ -139,6 +139,7 @@ fun SpeakScreen(viewModel: BakingViewModel = viewModel()) {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
     }
 
     DisposableEffect(Unit) {
