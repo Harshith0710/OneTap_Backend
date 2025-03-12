@@ -16,6 +16,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -95,6 +96,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
 
+data class PromptResponse(var prompt: String, val response: String, val image: Bitmap?)
+
 @Composable
 fun BakingScreen(
     context: Context,
@@ -103,10 +106,11 @@ fun BakingScreen(
     bakingViewModel: BakingViewModel = viewModel(),
     prePrompt: String
 ) {
+    var temp by remember { mutableStateOf("") }
     var prompt by rememberSaveable { mutableStateOf("") }
     var selectedImage by remember { mutableStateOf(image) }
     val uiState by bakingViewModel.uiState.collectAsState()
-    val promptResponseList = remember { mutableStateListOf<Triple<String, String, Bitmap?>>() }
+    val promptResponseList = remember { mutableStateListOf<PromptResponse>() }
     val user: FirebaseUser? = FirebaseAuth.getInstance().currentUser
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     var isSentOrRefreshed by remember { mutableStateOf(false) }
@@ -127,14 +131,14 @@ fun BakingScreen(
 
     LaunchedEffect(prePrompt, conversations) {
         if (prePrompt.isNotEmpty()) {
-            promptResponseList.add(Triple(prePrompt, "", null))
+            promptResponseList.add(PromptResponse(prePrompt, "", null))
             bakingViewModel.currentIndex = 0
             bakingViewModel.sendPrompt(null, prePrompt)
         }
 
         conversations.forEach { conversation ->
             val (prompt, response) = conversation.split("\n", limit = 2)
-            promptResponseList.add(Triple(prompt, response, null))
+            promptResponseList.add(PromptResponse(prompt, response, null))
         }
     }
 
@@ -153,33 +157,27 @@ fun BakingScreen(
         when (uiState) {
             is UiState.Success -> {
                 isRefreshDisabled = false
-                isStopButtonVisible = false // Reset to "Send" button
-                isStopButtonEnabled = false // Disable "Stop" button
+                isStopButtonVisible = false
+                isStopButtonEnabled = false
                 val response = (uiState as UiState.Success).outputText
                 val index = bakingViewModel.currentIndex
                 if (index != null) {
-                    promptResponseList[index] = Triple(
-                        promptResponseList[index].first,
-                        response,
-                        promptResponseList[index].third
-                    )
+                    promptResponseList[index] = promptResponseList[index].copy(response = response)
                     displayedTextMap[index] = ""
                     stopTypingMap[index] = false
                     bakingViewModel.currentIndex = null
-                }
-                else {
-                    promptResponseList.add(Triple(prompt, response, selectedImage))
+                } else {
+                    promptResponseList.add(PromptResponse(temp, response, selectedImage))
                     selectedImage = null
                 }
                 isResponseUpdating.value = false
-                prompt = ""
                 refreshingIndex = null
             }
             is UiState.Error -> {
                 isRefreshDisabled = false
-                isStopButtonVisible = false // Revert to "Send" button on error
-                isStopButtonEnabled = false // Disable "Stop" button
-                isSentOrRefreshed =false
+                isStopButtonVisible = false
+                isStopButtonEnabled = false
+                isSentOrRefreshed = false
             }
             else -> Unit
         }
@@ -234,7 +232,7 @@ fun BakingScreen(
                     onShare = { prompt, response ->
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "Prompt: $prompt\nResponse: $response")
+                            putExtra(Intent.EXTRA_TEXT, "You: $prompt\nKIRA: $response")
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "Share via"))
                     },
@@ -242,6 +240,9 @@ fun BakingScreen(
                         refreshingIndex = refreshIndex
                         isSentOrRefreshed = true
                         isResponseUpdating.value = true
+                        isStopButtonVisible = true
+                        isStopButtonEnabled = true
+                        stopTypingMap[refreshIndex] = false // Start typing
                         val (prompt, _, image) = promptResponseList[refreshIndex]
                         bakingViewModel.refreshPrompt(refreshIndex, prompt, image)
                     },
@@ -273,26 +274,24 @@ fun BakingScreen(
                 onPromptChange = { prompt = it },
                 onSendClick = {
                     if (prompt.isNotEmpty()) {
+                        temp = prompt
+                        prompt = ""
                         isSentOrRefreshed = true
-                        isStopButtonVisible = true // Show "Stop" button
-                        isStopButtonEnabled = false // Disable "Stop" button during loading
-                        isRefreshDisabled = true // Disable refresh button
-                        bakingViewModel.sendPrompt(selectedImage, prompt)
+                        isStopButtonVisible = true
+                        isStopButtonEnabled = false
+                        isRefreshDisabled = true
+                        bakingViewModel.sendPrompt(selectedImage, temp)
                     }
                 },
                 onImageSelectClick = { imageLauncher.launch("image/*") },
                 onStopClick = {
                     isSentOrRefreshed = false
-                    isStopButtonVisible = false // Revert to "Send" button
-                    isStopButtonEnabled = false // Disable "Stop" button
+                    isStopButtonVisible = false
+                    isStopButtonEnabled = false
                     isRefreshDisabled = false
                     val index = refreshingIndex ?: (promptResponseList.size - 1)
                     val currentDisplayedText = displayedTextMap[index] ?: ""
-                    promptResponseList[index] = Triple(
-                        promptResponseList[index].first,
-                        currentDisplayedText,
-                        promptResponseList[index].third
-                    )
+                    promptResponseList[index] = promptResponseList[index].copy(response = currentDisplayedText)
                     stopTypingMap[index] = true
                     refreshingIndex = null
                 },
@@ -311,11 +310,10 @@ fun BakingScreen(
         }
     }
 }
-
 @Composable
 fun ContentSection(
     uiState: UiState,
-    promptResponseList: List<Triple<String, String, Bitmap?>>,
+    promptResponseList: List<PromptResponse>,
     onCopy: (String) -> Unit,
     onShare: (String, String) -> Unit,
     onRefresh: (Int) -> Unit,
@@ -335,22 +333,22 @@ fun ContentSection(
     ) {
         itemsIndexed(
             items = promptResponseList,
-            key = { index, triple -> "$index-${triple.first.hashCode()}" }
-        ) { index, triple ->
+            key = { index, promptResponse -> "$index-${promptResponse.prompt.hashCode()}" }
+        ) { index, promptResponse ->
             val isFromConversations = index < predefinedConversationsCount
             val shouldShowFullText = rememberSaveable { mutableStateOf(isFromConversations) }
 
             PromptResponseUnit(
                 index = index,
-                prompt = triple.first,
-                response = triple.second,
-                onCopy = { onCopy(triple.second) },
-                onShare = { onShare(triple.first, triple.second) },
+                prompt = promptResponse.prompt,
+                response = promptResponse.response,
+                onCopy = { onCopy(promptResponse.response) },
+                onShare = { onShare(promptResponse.prompt, promptResponse.response) },
                 onRefresh = {
                     shouldShowFullText.value = false
                     onRefresh(index)
                 },
-                uploadedImage = triple.third,
+                uploadedImage = promptResponse.image,
                 showFullText = shouldShowFullText.value,
                 onShowFullText = {
                     shouldShowFullText.value = true
@@ -363,7 +361,12 @@ fun ContentSection(
                 displayedText = displayedTextMap[index] ?: "",
                 onDisplayedTextUpdate = { newText -> displayedTextMap[index] = newText },
                 onTypingStarted = onTypingStarted,
-                isSentOrRefreshed = isSentOrRefreshed
+                isSentOrRefreshed = isSentOrRefreshed,
+                onEditPrompt = { newPrompt ->
+                    promptResponse.prompt = newPrompt
+                    shouldShowFullText.value = false
+                    onRefresh(index)
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -382,7 +385,6 @@ fun ContentSection(
         }
     }
 }
-
 @Composable
 fun TypingEffectText(
     fullText: String,
@@ -526,6 +528,7 @@ fun PromptResponseUnit(
     onCopy: () -> Unit,
     onShare: () -> Unit,
     onRefresh: () -> Unit,
+    onEditPrompt: (String) -> Unit,
     uploadedImage: Bitmap?,
     showFullText: Boolean,
     onShowFullText: () -> Unit,
@@ -538,6 +541,9 @@ fun PromptResponseUnit(
     onTypingStarted: () -> Unit,
     isSentOrRefreshed: Boolean
 ) {
+    var isEditing by remember { mutableStateOf(false) }
+    var editedPrompt by rememberSaveable { mutableStateOf(prompt) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -545,6 +551,7 @@ fun PromptResponseUnit(
     ) {
         val context = LocalContext.current
         val screenWidth = LocalConfiguration.current.screenWidthDp
+
         // Profile and prompt section
         Row(verticalAlignment = Alignment.CenterVertically) {
             Image(
@@ -556,17 +563,59 @@ fun PromptResponseUnit(
                     .clip(CircleShape)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = prompt,
-                color = Color.White,
-                style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Medium),
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+            if (isEditing) {
+                TextField(
+                    value = editedPrompt,
+                    onValueChange = { editedPrompt = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color.Black)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, Color.Gray, RoundedCornerShape(12.dp)),
+                    textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color.DarkGray,
+                        unfocusedContainerColor = Color(0xFF333333),
+                        cursorColor = Color.Cyan,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    ),
+                    placeholder = {
+                        Text("Type your prompt...", color = Color.Gray)
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
+                IconButton(onClick = {
+                    isEditing = false
+                    onEditPrompt(editedPrompt)
+                }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.send_ic),
+                        contentDescription = "Save",
+                        tint = Color.White
+                    )
+                }
+            } else {
+                Text(
+                    text = prompt,
+                    color = Color.White,
+                    style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Medium),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp)
+                )
+                ActionButton(icon = R.drawable.icons8_edit_128, contentDescription = "Edit", onClick = { isEditing = true }, isSentOrRefreshed = isSentOrRefreshed)
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Uploaded image
         uploadedImage?.let { image ->
             Image(
                 bitmap = image.asImageBitmap(),
@@ -584,7 +633,6 @@ fun PromptResponseUnit(
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
-        // Action buttons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -599,9 +647,7 @@ fun PromptResponseUnit(
             }
         }
 
-        // Response text
         if (showFullText || isFromConversations || isResponseUpdating.value) {
-            // Regex for bold text and code blocks
             val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
             val codeRegex = Regex("```(.*?)\\n([\\s\\S]*?)```", RegexOption.DOT_MATCHES_ALL)
 
@@ -609,26 +655,22 @@ fun PromptResponseUnit(
             val matches = (boldRegex.findAll(response) + codeRegex.findAll(response)).sortedBy { it.range.first }
             val inlineContentMap = mutableMapOf<String, InlineTextContent>()
 
-            // Build the annotated string with inline content for code blocks
             val annotatedString = buildAnnotatedString {
                 matches.forEach { matchResult ->
-                    // Add text before the match
                     val textBefore = response.substring(currentIndex, matchResult.range.first)
                     append(textBefore)
 
                     when {
-                        // Code block match
                         codeRegex.matches(matchResult.value) -> {
                             val language = matchResult.groupValues[1].trim()
                             val code = matchResult.groupValues[2].trim()
-                            val placeholder = "CODE_BLOCK_${matchResult.range.first}"  // Ensure unique key
+                            val placeholder = "CODE_BLOCK_${matchResult.range.first}"
                             appendInlineContent(placeholder, "[CODE BLOCK]")
                             val estimatedHeight = (code.lines().size + 1) * 21.sp
-                            // Store the inline content for this code block
                             inlineContentMap[placeholder] = InlineTextContent(
                                 Placeholder(
-                                    width = (screenWidth * 0.8).sp,  // Use TextUnit.Sp(1000) for the width if needed
-                                    height = estimatedHeight,  // Adjust line height based on the number of lines
+                                    width = (screenWidth * 0.8).sp,
+                                    height = estimatedHeight,
                                     placeholderVerticalAlign = PlaceholderVerticalAlign.TextTop
                                 )
                             ) {
@@ -640,24 +682,19 @@ fun PromptResponseUnit(
                                 }
                             }
                         }
-                        // Bold text match
                         boldRegex.matches(matchResult.value) -> {
                             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                                 append(matchResult.groupValues[1])
                             }
                         }
                     }
-
                     currentIndex = matchResult.range.last + 1
                 }
-
-                // Add remaining text
                 if (currentIndex < response.length) {
                     append(response.substring(currentIndex))
                 }
             }
 
-            // Render the annotated text with inline content
             BasicText(
                 text = annotatedString,
                 style = TextStyle(fontSize = 16.sp, color = Color.LightGray),
@@ -684,6 +721,7 @@ fun PromptResponseUnit(
         )
     }
 }
+
 @Composable
 fun InputSection(
     prompt: String,
@@ -844,7 +882,7 @@ fun ActionButton(
         painter = painterResource(icon),
         contentDescription = contentDescription,
         modifier = Modifier
-            .clickable { if (!isSentOrRefreshed) onClick() } // Use the enabled state
+            .clickable { if (!isSentOrRefreshed || contentDescription[0] == 'C' || contentDescription[0] == 'S') onClick() } // Use the enabled state
             .padding(8.dp)
             .requiredSize(16.dp)
     )
