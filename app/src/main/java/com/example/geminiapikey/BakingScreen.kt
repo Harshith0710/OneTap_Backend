@@ -292,7 +292,9 @@ fun BakingScreen(
                     val index = refreshingIndex ?: (promptResponseList.size - 1)
                     val currentDisplayedText = displayedTextMap[index] ?: ""
                     promptResponseList[index] = promptResponseList[index].copy(response = currentDisplayedText)
-                    stopTypingMap[index] = true
+                    for (i in 0 until promptResponseList.size) {
+                        stopTypingMap[i] = true
+                    }
                     refreshingIndex = null
                 },
                 isStopButtonEnabled = isStopButtonEnabled,
