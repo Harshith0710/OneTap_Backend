@@ -41,7 +41,7 @@ class HomeActivity : ComponentActivity() {
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(
             this,
-            "ca-app-pub-3940256099942544/1033173712", // Replace with your Ad Unit ID
+            "ca-app-pub-4239057622725171/1028800152", // Replace with your Ad Unit ID
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
@@ -59,7 +59,7 @@ class HomeActivity : ComponentActivity() {
         val adRequest = AdRequest.Builder().build()
         RewardedAd.load(
             this,
-            "ca-app-pub-3940256099942544/5224354917", // Replace with your Ad Unit ID
+            "ca-app-pub-4239057622725171/7318876333", // Replace with your Ad Unit ID
             adRequest,
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {

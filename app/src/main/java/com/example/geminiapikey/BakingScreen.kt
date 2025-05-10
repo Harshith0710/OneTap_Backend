@@ -312,7 +312,7 @@ fun BakingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                adUnitIdValue = "ca-app-pub-3940256099942544/6300978111"
+                adUnitIdValue = "ca-app-pub-4239057622725171/6680582081"
             )
         }
     }
