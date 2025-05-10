@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,8 +23,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Home
@@ -41,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -108,120 +113,139 @@ fun QuickTapUIScreen(
     val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
     val user: FirebaseUser? = FirebaseAuth.getInstance().currentUser
     val name = if(user?.displayName != "") user?.displayName else "User"
-Box(
-    Modifier
-        .fillMaxSize()
-        .background(
-        Brush.radialGradient(
-            colors = listOf(
-                Color(0xFFFFC1E3).copy(alpha = 0.6f), // Light pink
-                Color(0xFF101010) // Dark background
-            ),
-            center = Offset(screenWidthPx / 2, screenHeightPx / 2), // Center in pixels
-            radius = (screenWidthPx + screenHeightPx) / 5f // Adjust radius as needed
-        )
-        )
-){
-    Column(
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeContent.union(WindowInsets.navigationBars)),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceEvenly
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(start = 10.dp)
-                    .size(40.dp)
-                    .background(
-                        color = Color.DarkGray,
-                        shape = CircleShape
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFFFC1E3).copy(alpha = 0.6f), // Light pink
+                        Color(0xFF101010) // Dark background
                     ),
-                contentAlignment = Alignment.Center
-            ){
-                IconButton(onClick = onMenuClick) {
-                    Icon(
-                        imageVector = Icons.Filled.Menu,
-                        contentDescription = "Menu",
-                        tint = Color.White
+                    center = Offset(screenWidthPx / 2, screenHeightPx / 2), // Center in pixels
+                    radius = (screenWidthPx + screenHeightPx) / 5f // Adjust radius as needed
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()) // Enable scrolling
+                .windowInsetsPadding(WindowInsets.safeContent.union(WindowInsets.navigationBars)),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Profile header section
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 10.dp)
+                        .size(40.dp)
+                        .background(
+                            color = Color.DarkGray,
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ){
+                    IconButton(onClick = onMenuClick) {
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = "Menu",
+                            tint = Color.White
+                        )
+                    }
+                }
+                Image(
+                    painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_1),
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier
+                        .size(120.dp)
+                )
+                ProfilePicture(photoUrl = user?.photoUrl)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Hi, $name",
+                fontSize = 24.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "How may I help\n you today?",
+                fontSize = 32.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Action buttons row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(2.dp)
+            ) {
+                // First column of buttons
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                ) {
+                    ActionButton1(
+                        "Chat with Bot",
+                        R.drawable.frame_5,
+                        Color(192, 159, 248),
+                        onActionClick,
+                        Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    ActionButton1(
+                        "Search by Image",
+                        R.drawable.frame_5__2_,
+                        Color(176, 176, 176),
+                        onActionClick,
+                        Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Second column of buttons
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                ) {
+                    ActionButton2(
+                        "Talk \nwith Bot",
+                        R.drawable.frame_5__1_,
+                        Color(254, 196, 221),
+                        onActionClick,
+                        Modifier.fillMaxWidth()
                     )
                 }
             }
-            Image(
-                painter = painterResource(id = R.drawable.screenshot_from_2024_11_26_17_34_39_transformed_transformed_1),
-                contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(120.dp)
-            )
-            ProfilePicture(photoUrl = user?.photoUrl)
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Hi, $name" ,
-            fontSize = 24.sp,
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
 
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            text = "How may I help\n you today?",
-            fontSize = 32.sp,
-            color = Color.White,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(2.dp)
-        ) {
+            Spacer(modifier = Modifier.height(32.dp))
+            // Fun options at the bottom
             Column(
-                modifier = Modifier
-                    .width(buttonWidth)
-                    .height(buttonWidth + 4.dp)
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                ActionButton1("Chat with Bot", R.drawable.frame_5, Color(192, 159, 248), onActionClick,
-                    Modifier
-                        .fillMaxWidth()
-                        .height(buttonWidth / 2))
-                Spacer(Modifier.height(4.dp))
-                ActionButton1("Search by Image", R.drawable.frame_5__2_, Color(176,176,176), onActionClick,
-                    Modifier
-                        .fillMaxWidth()
-                        .height(buttonWidth / 2))
+                FunOption(onFunClick = onFunClick)
             }
-            Spacer(Modifier.padding(2.dp))
-            Column(
-                modifier = Modifier
-                    .width(buttonWidth)
-                    .height(buttonWidth + 4.dp)
-                    .padding(2.dp)
-            ) {
-                ActionButton2("Talk \nwith Bot", R.drawable.frame_5__1_, Color(254,196,221), onActionClick,
-                    Modifier
-                        .fillMaxWidth()
-                        .height(buttonWidth + 4.dp))
-            }
-        }
-        Spacer(modifier = Modifier.height(32.dp))
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            FunOption(onFunClick = onFunClick)
         }
     }
-}
-
 }
 
 @Composable
@@ -236,9 +260,11 @@ fun ActionButton1(
         modifier = modifier
             .background(color, shape = RoundedCornerShape(24.dp))
             .clickable { onActionClick(text) }
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 20.dp) // more compact padding
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            verticalArrangement = Arrangement.Center
+        ){
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -247,24 +273,20 @@ fun ActionButton1(
                 Image(
                     painter = painterResource(image),
                     contentDescription = "Action Icon",
-                    modifier = Modifier.size(32.dp)
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(36.dp) // slight reduction
                 )
                 Image(
                     painter = painterResource(R.drawable._icon__arrow_forward_),
                     contentDescription = "Forward Arrow",
-                    modifier = Modifier.size(32.dp)
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(36.dp)
                 )
             }
             Text(
                 text = text,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .fillMaxWidth(),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier.padding(8.dp),
+                fontSize = 20.sp
             )
         }
     }
@@ -282,36 +304,33 @@ fun ActionButton2(
         modifier = modifier
             .background(color, shape = RoundedCornerShape(24.dp))
             .clickable { onActionClick(text) }
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 20.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.Center
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
                     painter = painterResource(image),
                     contentDescription = "Action Icon",
-                    modifier = Modifier.size(32.dp)
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(36.dp)
                 )
                 Image(
                     painter = painterResource(R.drawable._icon__arrow_forward_),
                     contentDescription = "Forward Arrow",
-                    modifier = Modifier.size(32.dp)
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(36.dp)
                 )
             }
             Text(
                 text = text,
-                fontSize = 28.sp,
-                color = Color.Black,
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .fillMaxWidth(),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier.padding(8.dp),
+                fontSize = 20.sp
             )
         }
     }

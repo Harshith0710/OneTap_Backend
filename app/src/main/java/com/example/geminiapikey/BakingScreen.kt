@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -38,11 +39,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,6 +77,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
@@ -85,6 +89,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -489,11 +494,15 @@ fun TypingEffectText(
 
 @Composable
 fun CodeBlock(language: String, code: String, onCopy: () -> Unit) {
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 150.dp, max = 250.dp) // Fixed height with scroll
+            .verticalScroll(scrollState)
             .background(Color.White, RoundedCornerShape(8.dp))
-            .padding(16.dp)
+            .padding(12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -673,20 +682,25 @@ fun PromptResponseUnit(
                             val code = matchResult.groupValues[2].trim()
                             val placeholder = "CODE_BLOCK_${matchResult.range.first}"
                             appendInlineContent(placeholder, "[CODE BLOCK]")
-                            val estimatedHeight = (code.lines().size + 1) * 21.sp
+                            val density = LocalDensity.current
+                            val fixedHeight = 250.dp
+                            val fixedWidth = (screenWidth * 0.9).dp
+                            val fixedWidthSp: TextUnit = with(density) { fixedWidth.toSp() }
+                            val fixedHeightSp: TextUnit = with(density) { fixedHeight.toSp() }
+
                             inlineContentMap[placeholder] = InlineTextContent(
                                 Placeholder(
-                                    width = (screenWidth * 0.8).sp,
-                                    height = estimatedHeight,
-                                    placeholderVerticalAlign = PlaceholderVerticalAlign.TextTop
+                                    width = fixedWidthSp,
+                                    height = fixedHeightSp,
+                                    placeholderVerticalAlign = PlaceholderVerticalAlign.Top
                                 )
                             ) {
-                                CodeBlock(language, code) {
+                                CodeBlock(language, code, onCopy = {
                                     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     val clipData = ClipData.newPlainText("Code", code)
                                     clipboardManager.setPrimaryClip(clipData)
                                     Toast.makeText(context, "Code copied!", Toast.LENGTH_SHORT).show()
-                                }
+                                })
                             }
                         }
                         boldRegex.matches(matchResult.value) -> {
