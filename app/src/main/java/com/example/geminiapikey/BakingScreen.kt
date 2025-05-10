@@ -43,6 +43,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -69,6 +71,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -297,6 +300,8 @@ fun BakingScreen(
                     }
                     refreshingIndex = null
                 },
+                image = selectedImage,
+                onRemoveImage = { selectedImage = null },
                 isStopButtonEnabled = isStopButtonEnabled,
                 isLoading = isLoading,
                 isSentOrRefreshed = isSentOrRefreshed
@@ -733,86 +738,121 @@ fun InputSection(
     onStopClick: () -> Unit,
     isStopButtonEnabled: Boolean,
     isLoading: Boolean,
-    isSentOrRefreshed: Boolean
+    isSentOrRefreshed: Boolean,
+    image: Bitmap?,
+    onRemoveImage: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .background(Color(0xFF1E1E1E), shape = RoundedCornerShape(12.dp)),
-        verticalAlignment = Alignment.CenterVertically
+            .background(Color(0xFF1E1E1E), shape = RoundedCornerShape(12.dp))
+            .padding(12.dp)
     ) {
-        TextField(
-            value = prompt,
-            onValueChange = onPromptChange,
-            placeholder = {
-                Text(
-                    "Ask your query ...",
-                    color = Color.Gray,
-                    style = TextStyle(fontStyle = FontStyle.Italic)
+        // Show image above input if available
+        if (image != null) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .align(Alignment.Start)
+            ) {
+                Image(
+                    bitmap = image.asImageBitmap(),
+                    contentDescription = "Selected Image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp))
                 )
-            },
-            textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 16.dp),
-            colors = TextFieldDefaults.colors(
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                cursorColor = Color.White,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent
-            )
-        )
+                IconButton(
+                    onClick = onRemoveImage,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(20.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), shape = CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove Image",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
 
-        IconButton(
-            onClick = onImageSelectClick,
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .size(36.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.icon_image_upload),
-                contentDescription = "Select Image",
-                tint = Color.White
-            )
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        if (isSentOrRefreshed) {
-            IconButton(
-                onClick = {
-                    if (!isLoading) {
-                        onStopClick() // Invoke the onStopClick lambda
-                    }
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Text Field
+            TextField(
+                value = prompt,
+                onValueChange = onPromptChange,
+                placeholder = {
+                    Text(
+                        "Ask your query ...",
+                        color = Color.Gray,
+                        style = TextStyle(fontStyle = FontStyle.Italic)
+                    )
                 },
+                textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
                 modifier = Modifier
-                    .padding(end = 8.dp)
-                    .size(36.dp)
-                    .alpha(if (isStopButtonEnabled) 1f else 0.5f) // Reduce opacity if disabled
+                    .weight(1f)
+                    .padding(end = 8.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    cursorColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                )
+            )
+
+            // Image Select Button
+            IconButton(
+                onClick = onImageSelectClick,
+                modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.icons8_stop_50), // Stop icon
-                    contentDescription = "Stop",
+                    painter = painterResource(id = R.drawable.icon_image_upload),
+                    contentDescription = "Select Image",
                     tint = Color.White
                 )
             }
-        }
-        else {
-            IconButton(
-                onClick = onSendClick,
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .size(36.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.send_ic),
-                    contentDescription = "Send",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
+
+            // Send or Stop button
+            if (isSentOrRefreshed) {
+                IconButton(
+                    onClick = {
+                        if (!isLoading) onStopClick()
+                    },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .alpha(if (isStopButtonEnabled) 1f else 0.5f)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.icons8_stop_50),
+                        contentDescription = "Stop",
+                        tint = Color.White
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = onSendClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.send_ic),
+                        contentDescription = "Send",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
