@@ -62,6 +62,9 @@
         <activity android:name=".GetStartedActivity"
             android:exported="true"
             android:theme="@style/Theme.GeminiAPIKey" />
+        <activity android:name=".WebViewActivity"
+        android:exported="true"
+        android:theme="@style/Theme.GeminiAPIKey" />
     </application>
 
 </manifest>

@@ -198,18 +198,20 @@ fun BakingScreen(
             .windowInsetsPadding(WindowInsets.safeContent.union(WindowInsets.navigationBars))
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxSize()
         ) {
+            // ✅ Fixed Header
             Header(context)
 
+            // ✅ K.I.R.A Banner
             Box(
                 modifier = Modifier
                     .width(0.42f * screenWidth)
                     .background(
                         shape = RoundedCornerShape(50),
                         color = Color.White
-                    ),
+                    )
+                    .align(Alignment.CenterHorizontally),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -223,6 +225,7 @@ fun BakingScreen(
                 )
             }
 
+            // ✅ Scrollable content section
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -250,7 +253,7 @@ fun BakingScreen(
                         isResponseUpdating.value = true
                         isStopButtonVisible = true
                         isStopButtonEnabled = true
-                        stopTypingMap[refreshIndex] = false // Start typing
+                        stopTypingMap[refreshIndex] = false
                         val (prompt, _, image) = promptResponseList[refreshIndex]
                         bakingViewModel.refreshPrompt(refreshIndex, prompt, image)
                     },
@@ -269,9 +272,10 @@ fun BakingScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(120.dp))
+            Spacer(modifier = Modifier.height(120.dp)) // Space for bottom section
         }
 
+        // ✅ Input & Banner fixed to bottom
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -322,6 +326,7 @@ fun BakingScreen(
         }
     }
 }
+
 @Composable
 fun ContentSection(
     uiState: UiState,

@@ -397,11 +397,29 @@ fun SidePanel(onClose: () -> Unit) {
                         modifier = Modifier.fillMaxWidth()
                     )
                     // Menu items
-                    MenuItem("Home", Icons.Outlined.Home)
-                    MenuItem2("${user?.displayName}", photoUrl = user?.photoUrl)
-                    MenuItem("Privacy Policy", Icons.Outlined.Lock)
-                    MenuItem2("Help Center",R.drawable.icons8_help_32)
-                    MenuItem2("Terms of Use",R.drawable.icons8_analyze_64)
+                    MenuItem("Home", Icons.Outlined.Home){}
+                    MenuItem2("${user?.displayName}", photoUrl = user?.photoUrl){}
+                    MenuItem("Privacy Policy", Icons.Outlined.Lock) {
+                        val intent = Intent(context, WebViewActivity::class.java).apply {
+                            putExtra("fileName", "privacypolicy.html")
+                        }
+                        context.startActivity(intent)
+                    }
+
+                    MenuItem2("Help Center", R.drawable.icons8_help_32) {
+                        val intent = Intent(context, WebViewActivity::class.java).apply {
+                            putExtra("fileName", "HELPCENTER.html")
+                        }
+                        context.startActivity(intent)
+                    }
+
+                    MenuItem2("Terms of Use", R.drawable.icons8_analyze_64) {
+                        val intent = Intent(context, WebViewActivity::class.java).apply {
+                            putExtra("fileName", "termsofuse.html")
+                        }
+                        context.startActivity(intent)
+                    }
+
                     Spacer(modifier = Modifier.weight(1f)) // Pushes the "Logout" button to the bottom
 
                     // Logout button with styling
@@ -441,24 +459,24 @@ fun SidePanel(onClose: () -> Unit) {
 }
 
 @Composable
-fun MenuItem(title: String, icon: ImageVector) {
+fun MenuItem(title: String, icon: ImageVector, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* Handle click for menu item */ }
-            .padding(vertical = 16.dp), // Increased vertical padding
+            .clickable(onClick = onClick)
+            .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(28.dp) // Slightly larger icon size
+            modifier = Modifier.size(28.dp)
         )
-        Spacer(modifier = Modifier.width(20.dp)) // Increased space between icon and text
+        Spacer(modifier = Modifier.width(20.dp))
         Text(
             text = title,
-            fontSize = 20.sp, // Larger font size for menu items
+            fontSize = 20.sp,
             fontWeight = FontWeight.Medium,
             color = Color.White
         )
@@ -466,15 +484,14 @@ fun MenuItem(title: String, icon: ImageVector) {
 }
 
 @Composable
-fun MenuItem2(title: String, image: Int? = null, photoUrl: Uri? = null) {
+fun MenuItem2(title: String, image: Int? = null, photoUrl: Uri? = null, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* Handle click for menu item */ }
-            .padding(vertical = 16.dp), // Increased vertical padding
+            .clickable(onClick = onClick)
+            .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // If photoUrl is available, display the profile picture, else use default image
         if (photoUrl != null) {
             Image(
                 painter = rememberAsyncImagePainter(photoUrl),
@@ -482,7 +499,7 @@ fun MenuItem2(title: String, image: Int? = null, photoUrl: Uri? = null) {
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color.Gray) // Placeholder background
+                    .background(Color.Gray)
             )
         } else {
             Image(
@@ -491,14 +508,13 @@ fun MenuItem2(title: String, image: Int? = null, photoUrl: Uri? = null) {
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color.Gray) // Placeholder background
+                    .background(Color.Gray)
             )
         }
-
-        Spacer(modifier = Modifier.width(20.dp)) // Increased space between icon and text
+        Spacer(modifier = Modifier.width(20.dp))
         Text(
-            text = if(title != "") title else "User",
-            fontSize = 20.sp, // Larger font size for menu items
+            text = if (title.isNotEmpty()) title else "User",
+            fontSize = 20.sp,
             fontWeight = FontWeight.Medium,
             color = Color.White
         )
